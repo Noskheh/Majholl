@@ -1,0 +1,7 @@
+ECHO is on.
+.venv
+__pycache__/
+/__pychace__
+**/__pycache__/
+*.pyc
+*.sql

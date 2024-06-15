@@ -1,0 +1,17 @@
+asgiref==3.8.1
+certifi==2024.2.2
+charset-normalizer==3.3.2
+coloredlogs==15.0.1
+Django==5.0.4
+humanfriendly==10.0
+idna==3.6
+mysqlclient==2.2.4
+psutil==5.9.8
+pyreadline3==3.4.1
+pyTelegramBotAPI==4.17.0
+requests==2.31.0
+sqlparse==0.4.4
+telebot==0.0.5
+tzdata==2024.1
+urllib3==2.2.1
+watchdog==4.0.0
