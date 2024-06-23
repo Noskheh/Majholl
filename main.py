@@ -1,12 +1,14 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup , InlineKeyboardButton
-from mainrobot.models import users , admins , v2panel , products , inovices , payments
-from keybuttons import Botkeyboard as botkb
-import string , random , re , decimal
-from functions.user import *
-from functions.panelmanaging import *
-from functions.buy_service import * 
+from mainrobot.models import users , admins , v2panel , products , inovices , payments , channels
+from keybuttons import BotkeyBoard as BotKb
+import string , random , re , decimal , json 
+from functions.USERS_checker import *
+from functions.PANEL_managing import *
+from functions.BUY_services import * 
 from functions.checker_ import *
+from tools import QRcode_maker
+import panelsapi
 BOT_TOKEN = '6724521362:AAGKk0Fgvm1oP90e1XKZvjZ4thx6D_IZCtI'
 
 bot = telebot.TeleBot(token=BOT_TOKEN , parse_mode= "HTML" , colorful_logs= True)
@@ -17,26 +19,36 @@ bot = telebot.TeleBot(token=BOT_TOKEN , parse_mode= "HTML" , colorful_logs= True
 #//TODO add  enable | disable , also for products
 #//TODO avoid adding products when no panel exists
 #//TODO add /add_panel to the text if theres no plan for first time
+#//TODO add charge wallet message in admin side section
+#//TODO add port section in v2panel , change format of re checker in v2panel
+
+
+
 
 #= Welcomer
-@bot.message_handler(func= lambda message : '/start' in message.text)
-def start_bot(message):
+@bot.message_handler(func=lambda message: '/start' in message.text)
+def start_bot(message) :
     user_ = message.from_user 
-    check_ = CHECK_USER_EXITENCE(user_.id , user_.first_name , user_.last_name , user_.username , 0 )
+    CHECKING_USER = CHECK_USER_EXITENCE(user_.id , user_.first_name , user_.last_name , user_.username , 0 )
 
-    if check_user_in_channel(user_.id, Bot=bot)  == True :
+    if CHECK_USER_CHANNEL(UserId=user_.id , Bot=bot) == True :
         #- Canceling operations : panels , product
         panel_reciving_state['enable_panel_adding'] = False
         product_reciving_state['enable_product_adding'] = False
         changing_panel_details.update({key : False for key in changing_panel_details})
         changing_product_details['enable_changing_product_deatails'] = False
 
-        
-        
-        bot.send_message(message.chat.id , 'Welcome' , reply_markup= botkb.main_menu_in_user_side(message.from_user.id))
+        bot.send_message(message.chat.id , ' \ خوش امدید \ ' , reply_markup= BotKb.main_menu_in_user_side(message.from_user.id))
 
     else :
-            bot.send_message(message.chat.id , 'لطفا در کانال ما جوین شوید' )
+        channel = channels.objects.all()
+        for i in channel:
+            channel_url = bot.get_chat(i.channel_id).username
+        Text = f'لطفا در کانال ما جوین شوید \n\n channel : @{channel_url} \n\n و سپس /start را وارد کنید '
+        bot.send_message(message.chat.id , text=Text )
+
+
+
 
 # -------------------------BUY SERVICES----------------------------------------------------------------------------------------
 #//TODO edit all text in bot.send messsage
@@ -223,13 +235,13 @@ def handle_selected_products(call) :
             
 
             
-            panel_name = v2panel.objects.get(id = panel_product_selected['panel_number'] ).panel_name
+            panel_ = v2panel.objects.get(id = panel_product_selected['panel_number'] )
 
             users_ = users.objects.get(user_id = call.from_user.id)
 
             inovivces_ = create_inovices(user_id= users_ ,
                                         user_username=call.from_user.username ,
-                                        panel_name = panel_name ,
+                                        panel_name = panel_.panel_name ,
                                         product_name= panel_product_selected['product_name'],
                                         data_limit= panel_product_selected['data_limit'],
                                         expire_date= panel_product_selected['expire_date'] ,
@@ -240,8 +252,15 @@ def handle_selected_products(call) :
             
             inovivces2_ = inovices.objects.filter(user_id =users_).latest('created_date')
             payments_ = payments.objects.create(user_id = users_ , amount = panel_product_selected['pro_cost'] ,payment_stauts = 'accepted' , inovice_id = inovivces2_)
-
+            send_request = panelsapi.marzban(panel_product_selected['panel_number']).add_user(panel_product_selected['usernameforacc'] , float(panel_product_selected['data_limit']) ,panel_product_selected['expire_date'])
             bot.edit_message_text('paied successfully \n\t waiting ' , call.message.chat.id , call.message.message_id)
+            how_to_send(send_request , panel_product_selected['panel_number'] , bot , call)
+            
+        
+
+
+
+            
         
 
 
@@ -299,7 +318,7 @@ def get_username_for_config_name(message):
     if panel_product_selected['get_username'] == True:
         panel_product_selected['usernameforacc'] = f'{panel_product_selected["panel_number"]}_' + message.text
         panel_product_selected['get_username'] = False
-        bot.send_message(message.chat.id  ,'لطفا یک روش پرداخت را انتخاب کنید' , reply_markup= botkb.payby_in_user_side())
+        bot.send_message(message.chat.id  ,'لطفا یک روش پرداخت را انتخاب کنید' , reply_markup= BotKb.payby_in_user_side())
         
 
 
@@ -353,7 +372,7 @@ def getting_fish_image(message):
             """
 
             for i in admins_:
-                    bot.send_photo( i.user_id , message.photo[-1].file_id , caption = caption_text , reply_markup= botkb.agree_or_disagree(message.from_user.id) )
+                    bot.send_photo( i.user_id , message.photo[-1].file_id , caption = caption_text , reply_markup= BotKb.agree_or_disagree(message.from_user.id) )
             
             bot.send_message(message.chat.id , 'درخواست شما برای ادمین صادر شد در صورت تایید به اطلاع شما خواهد رسید')
         user_fish.update({'user_id': int, 'fish_send': False})
@@ -370,7 +389,7 @@ taaeed_ya_rad = {'status':False }
 def agree_or_disagree_kbk_payment(call):
     
     call_data = call.data.split('_')
-    
+    print(call_data)
 
     
     if call.data.startswith('agree_')  and taaeed_ya_rad['status'] == True:
@@ -396,6 +415,8 @@ def agree_or_disagree_kbk_payment(call):
 
                 bot.send_message(call.message.chat.id , 'پرداخت انجام شد')
                 bot.send_message(call.data.split('_')[1] , 'پرداخت شما با موفقیت انجام شد \n YOUR CONFIG')
+                send_request = panelsapi.marzban(panel_product_selected['panel_number']).add_user(panel_product_selected['usernameforacc'] , float(panel_product_selected['data_limit']) ,panel_product_selected['expire_date'])
+                how_to_send(send_request , panel_product_selected['panel_number'] , bot , call)
                 taaeed_ya_rad['status'] = False
 
 
@@ -412,24 +433,26 @@ def agree_or_disagree_kbk_payment(call):
             payments_ = payments.objects.create(user_id = users_ , amount = panel_product_selected['pro_cost'] ,payment_stauts = 'declined' , inovice_id = inovivces2_)
 
             bot.send_message(call.message.chat.id , 'علت رد پرداخت را ارسال کنید')
-            payments_decline_1['userid'] = call.from_user.id
+            payments_decline_1['userid'] = call_data[1]
             payments_decline_1['reason'] = True
             taaeed_ya_rad['status'] = False
- 
+            
+
+
 
 
 payments_decline_1 = {'reason' : False  , 'userid' : int}
 # ./buy services > disagree of fish : getting reason
 @bot.message_handler(func= lambda message : payments_decline_1['reason'] == True)
 def get_decline_reason(message):
-
+    
+    user_id = payments_decline_1['userid']
     if payments_decline_1['reason'] == True : 
-        
         payments_ = payments.objects.filter(user_id = payments_decline_1['userid']).latest('payment_time')
         payments_.decline_reason = message.text
         payments_.save()
+        bot.send_message(user_id , f'درخواست شما رد شد \n\n علت :‌ {message.text}')
         bot.send_message(message.chat.id , 'درخواست پرداخت رد شد')
-        bot.send_message(payments_decline['userid'] , f'درخواست شما رد شد \n\n علت :‌ {message.text}')
 
 
 
@@ -461,22 +484,22 @@ def get_decline_reason(message):
 def handling_all_back_buttons(call) :
 
     if call.data == 'back_to_main_menu_for_one_panels' : 
-        bot.edit_message_text( 'Welcome' , call.message.chat.id , call.message.message_id , reply_markup = botkb.main_menu_in_user_side(call.from_user.id) )
+        bot.edit_message_text( 'Welcome' , call.message.chat.id , call.message.message_id , reply_markup = BotKb.main_menu_in_user_side(call.from_user.id) )
     
 
 
     if call.data == 'back_from_verfying':
-        bot.edit_message_text('canceled // welcome' , call.message.chat.id , call.message.message_id , reply_markup = botkb.main_menu_in_user_side(call.from_user.id))
+        bot.edit_message_text('canceled // welcome' , call.message.chat.id , call.message.message_id , reply_markup = BotKb.main_menu_in_user_side(call.from_user.id))
         bot.answer_callback_query(call.id , 'CANCELED')
 
 
     if call.data == 'back_from_payment':
-        bot.edit_message_text('payment canceled' , call.message.chat.id , call.message.message_id , reply_markup= botkb.main_menu_in_user_side(call.from_user.id))
+        bot.edit_message_text('payment canceled' , call.message.chat.id , call.message.message_id , reply_markup= BotKb.main_menu_in_user_side(call.from_user.id))
         bot.answer_callback_query(call.id , 'CANCELED')
 
 
     if call.data == 'back_to_main_menu_for_2more_panels':
-        bot.edit_message_text('welcome', call.message.chat.id , call.message.message_id , reply_markup = botkb.main_menu_in_user_side(call.from_user.id))
+        bot.edit_message_text('welcome', call.message.chat.id , call.message.message_id , reply_markup = BotKb.main_menu_in_user_side(call.from_user.id))
 
 
 
@@ -513,7 +536,7 @@ def bot_mangement(call) :
         bot.edit_message_text('Welcome to bot mangement !!' , 
                               call.message.chat.id , 
                               call.message.message_id , 
-                              reply_markup=botkb.management_menu_in_admin_side()
+                              reply_markup=BotKb.management_menu_in_admin_side()
                               )
     
     
@@ -521,7 +544,7 @@ def bot_mangement(call) :
         bot.edit_message_text('Welcome' ,
                               call.message.chat.id ,
                               call.message.message_id ,
-                              reply_markup = botkb.main_menu_in_user_side(call.from_user.id)
+                              reply_markup = BotKb.main_menu_in_user_side(call.from_user.id)
                              )
 
 
@@ -546,7 +569,7 @@ def handle_panel(call) :
     if call.data == 'panels_management' :
         bot.send_message(call.message.chat.id ,
                          text = 'You\'r managing panels !!' ,
-                         reply_markup = botkb.panel_management_menu_in_admin_side()
+                         reply_markup = BotKb.panel_management_menu_in_admin_side()
                         )
 
 
@@ -563,25 +586,25 @@ def handle_panel(call) :
 
     #- Removing panel
     if call.data == 'remove_panel' :
-        if botkb.panel_management_remove_panel() == 'no_panel_to_remove' :
+        if BotKb.panel_management_remove_panel() == 'no_panel_to_remove' :
             bot.send_message(call.message.chat.id , 'no panel to remove \n\n\t add your first')
         else :
             bot.edit_message_text('which panel do you want to remove? \n\n tap to remove panel' ,
                                 call.message.chat.id ,
                                 call.message.message_id ,
-                                reply_markup = botkb.panel_management_remove_panel()
+                                reply_markup = BotKb.panel_management_remove_panel()
                                 )
 
 
     #- Manging panels
     if call.data == 'manageing_panels':
-        if botkb.panel_management_manageing_panels() == 'no_panel_to_manage' :
+        if BotKb.panel_management_manageing_panels() == 'no_panel_to_manage' :
             bot.send_message(call.message.chat.id , 'no panel to manage \n\n\t add your first')
         else :
             bot.edit_message_text('Now you\'r managing your panels  \n\n TAP on to manage them : ⚙️' , 
                                 call.message.chat.id , 
                                 call.message.message_id , 
-                                reply_markup=botkb.panel_management_manageing_panels()
+                                reply_markup=BotKb.panel_management_manageing_panels()
                                 )
 
 
@@ -611,7 +634,7 @@ def handle_incoming_panelName(message) :
         panel_reciving_state.update({key : False for key in panel_reciving_state})
         bot.send_message(message.chat.id ,
                          'adding panel / CANCELED / ' , 
-                         reply_markup = botkb.panel_management_menu_in_admin_side() 
+                         reply_markup = BotKb.panel_management_menu_in_admin_side() 
                         )
             
     else :
@@ -637,7 +660,7 @@ def handle_incoming_panelUrl(message) :
         panel_reciving_state.update({key : False for key in panel_reciving_state})
         bot.send_message(message.chat.id , 
                          'adding panel / CANCELED / ' ,
-                         reply_markup = botkb.panel_management_menu_in_admin_side() 
+                         reply_markup = BotKb.panel_management_menu_in_admin_side() 
                         )
             
     else : 
@@ -664,7 +687,7 @@ def handle_incoming_panelUsername(message) :
     if panel_reciving_state['panel_username_receiving'] == False and message.text == '/cancel' :
         panel_reciving_state.update({key : False for key in panel_reciving_state})
         bot.send_message(message.chat.id , 'adding panel / CANCELED / ' ,
-                         reply_markup = botkb.panel_management_menu_in_admin_side() 
+                         reply_markup = BotKb.panel_management_menu_in_admin_side() 
                         )
             
     else:
@@ -683,7 +706,7 @@ def handle_incoming_panelPassword(message) :
     if panel_reciving_state['panel_password_receiving'] == False and message.text == '/cancel' :
         panel_reciving_state.update({key : False for key in panel_reciving_state})
         bot.send_message(message.chat.id , 'adding panel / CANCELED / ' ,
-                         reply_markup = botkb.panel_management_menu_in_admin_side() 
+                         reply_markup = BotKb.panel_management_menu_in_admin_side() 
                         )
             
     else :
@@ -702,7 +725,7 @@ def handle_incoming_panelPassword(message) :
             panel_information.update({key: '' for key in panel_information })
             bot.send_message(message.chat.id ,
                              'Panel successfully added' , 
-                             reply_markup = botkb.panel_management_menu_in_admin_side()
+                             reply_markup = BotKb.panel_management_menu_in_admin_side()
                             )
 
         except Exception as panel_creation:
@@ -742,7 +765,7 @@ def handle_removing_panels(call) :
     bot.edit_message_text("Panel and its products Removed ;\n !Succesfully " , 
                           call.message.chat.id ,
                           call.message.message_id ,
-                          reply_markup= botkb.panel_management_remove_panel()
+                          reply_markup= BotKb.panel_management_remove_panel()
                          )
 
 
@@ -753,7 +776,7 @@ def back_from_remove_panel(call) :
         bot.edit_message_text('You\'r managing panels !!' , 
                               call.message.chat.id ,
                               call.message.message_id ,
-                              reply_markup = botkb.panel_management_menu_in_admin_side()
+                              reply_markup = BotKb.panel_management_menu_in_admin_side()
                             )
         
 
@@ -773,7 +796,7 @@ def handle_panel_management(call) :
         bot.edit_message_text('to change your setting tap on buttons',
                               call.message.chat.id ,
                               call.message.message_id ,
-                              reply_markup = botkb.manage_selected_panel(id_panel_pk = ob_)
+                              reply_markup = BotKb.manage_selected_panel(id_panel_pk = ob_)
                              )
         
 
@@ -782,7 +805,7 @@ def handle_panel_management(call) :
         bot.edit_message_text('Now you\'r managing your panels  \n\n TAP on to manage them : ⚙️'  ,
                               call.message.chat.id , 
                               call.message.message_id ,
-                              reply_markup = botkb.panel_management_manageing_panels()
+                              reply_markup = BotKb.panel_management_manageing_panels()
                              )
 
 
@@ -790,7 +813,7 @@ def handle_panel_management(call) :
         bot.edit_message_text('Welcome to bot mangement !!' , 
                               call.message.chat.id , 
                               call.message.message_id ,
-                              reply_markup = botkb.panel_management_menu_in_admin_side()
+                              reply_markup = BotKb.panel_management_menu_in_admin_side()
                             )
         
 
@@ -816,7 +839,7 @@ def changing_panel_details_status(call):
         bot.edit_message_text(f'to change your setting tap on buttons \n\n Panel status changed : {"enable" if panel_.panel_status == 1 else "disable"}' ,
                               call.message.chat.id ,
                               call.message.message_id ,
-                              reply_markup = botkb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
+                              reply_markup = BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
                              )
         
         bot.answer_callback_query(call.id , 
@@ -852,7 +875,7 @@ def get_changing_panel_details_name(message):
         changing_panel_details['panel_name'] = False
         bot.send_message(message.chat.id , 
                          'to change your setting tap on buttons  \n\n changing panel name : / CANCELED / ' ,
-                         reply_markup = botkb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
+                         reply_markup = BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
                         )
     
     else:
@@ -869,7 +892,7 @@ def get_changing_panel_details_name(message):
 
         bot.send_message(message.chat.id ,
                         'to change your setting tap on buttons \n\n Panel name changed' ,
-                        reply_markup=botkb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
+                        reply_markup=BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
                         )
         
 
@@ -894,7 +917,7 @@ def get_changing_panel_details_name(message):
         changing_panel_details['panel_url'] = False
         bot.send_message(message.chat.id , 
                          'to change your setting tap on buttons  \n\n changing panel url / CANCELED / ' ,
-                         reply_markup = botkb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
+                         reply_markup = BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
                         )
     else :   
 
@@ -915,7 +938,7 @@ def get_changing_panel_details_name(message):
 
             bot.send_message(message.chat.id ,
                      'to change your setting tap on buttons \n\n Panel url changed' ,
-                     reply_markup=botkb.manage_selected_panel(id_panel_pk= int(getting_panel_pk(selected_panel)))
+                     reply_markup=BotKb.manage_selected_panel(id_panel_pk= int(getting_panel_pk(selected_panel)))
                     )
         else:
             bot.send_message(message.chat.id , 
@@ -947,7 +970,7 @@ def get_changing_panel_details_name(message):
         changing_panel_details['panel_username'] = False
         bot.send_message(message.chat.id , 
                          'to change your setting tap on buttons  \n\n changing panel username / CANCELED / ' ,
-                         reply_markup = botkb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
+                         reply_markup = BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
                         )
     else:
 
@@ -963,7 +986,7 @@ def get_changing_panel_details_name(message):
 
         bot.send_message(message.chat.id ,
                     'to change your setting tap on buttons \n\n panel username changed' ,
-                    reply_markup=botkb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
+                    reply_markup=BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
                     )
     
 
@@ -978,11 +1001,11 @@ def changing_panel_details_name(call):
     list_calls = call.data.split('_')
     
     if  call.data =='panel_password' :
-        botkb.manage_selected_panel(id_panel_pk = selected_panel['panel_id'] , passwd = True)
+        BotKb.manage_selected_panel(id_panel_pk = selected_panel['panel_id'] , passwd = True)
         bot.edit_message_text('to change your setting tap on buttons',
                                 call.message.chat.id ,
                                 call.message.message_id ,
-                                reply_markup = botkb.manage_selected_panel(id_panel_pk = selected_panel['panel_id'] , passwd = True)
+                                reply_markup = BotKb.manage_selected_panel(id_panel_pk = selected_panel['panel_id'] , passwd = True)
                                 )
             
     if call.data.startswith('panel_password_') :
@@ -1002,7 +1025,7 @@ def get_changing_panel_details_name(message):
         changing_panel_details['panel_password'] == False
         bot.send_message(message.chat.id , 
                          'to change your setting tap on buttons  \n\n changing panel password / CANCELED / ' ,
-                         reply_markup = botkb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
+                         reply_markup = BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
                         )
     else : 
 
@@ -1018,7 +1041,7 @@ def get_changing_panel_details_name(message):
 
         bot.send_message(message.chat.id ,
                     'to change your setting tap on buttons \n\n panel password changed' ,
-                    reply_markup=botkb.manage_selected_panel(id_panel_pk= int(getting_panel_pk(selected_panel)))
+                    reply_markup=BotKb.manage_selected_panel(id_panel_pk= int(getting_panel_pk(selected_panel)))
                     )
         
 #//TODO add security deatils for password button
@@ -1034,7 +1057,7 @@ def changing_panel_details_reality(call):
         bot.edit_message_text('Choose your prefer setting' , 
                               call.message.chat.id ,
                               call.message.message_id ,
-                              reply_markup= botkb.changin_reality_flow() 
+                              reply_markup= BotKb.changin_reality_flow() 
                              )
 
 
@@ -1056,7 +1079,7 @@ def changing_panel_details_reality(call):
         bot.edit_message_text('to change your setting tap on buttons \n\n Reality flow changed ' ,
                               call.message.chat.id , 
                               call.message.message_id ,
-                              reply_markup = botkb.manage_selected_panel(id_panel_pk= int(getting_panel_pk(selected_panel)))
+                              reply_markup = BotKb.manage_selected_panel(id_panel_pk= int(getting_panel_pk(selected_panel)))
                              )
 
 
@@ -1074,7 +1097,7 @@ def changing_panel_details_reality(call):
         bot.edit_message_text('to change your setting tap on buttons \n\n Reality flow changed ' , 
                               call.message.chat.id , 
                               call.message.message_id , 
-                              reply_markup = botkb.manage_selected_panel(id_panel_pk= int(getting_panel_pk(selected_panel)))
+                              reply_markup = BotKb.manage_selected_panel(id_panel_pk= int(getting_panel_pk(selected_panel)))
                               )
         
 
@@ -1092,7 +1115,7 @@ def changing_panel_details_capicty(call) :
         bot.edit_message_text('to change your setting tap on buttons' ,
                               call.message.chat.id ,
                               call.message.message_id ,
-                              reply_markup = botkb.changin_panel_capcity(id_panel_pk = int(getting_panel_pk(selected_panel)))
+                              reply_markup = BotKb.changin_panel_capcity(id_panel_pk = int(getting_panel_pk(selected_panel)))
                              )
 
 
@@ -1138,7 +1161,7 @@ def changing_panel_details_capicty(call) :
         bot.edit_message_text('to change your setting tap on buttons  \n\n capcity mode changed  ' ,
                               call.message.chat.id , 
                               call.message.message_id , 
-                               reply_markup= botkb.changin_panel_capcity(id_panel_pk= int(getting_panel_pk(selected_panel)))
+                               reply_markup= BotKb.changin_panel_capcity(id_panel_pk= int(getting_panel_pk(selected_panel)))
                              )
 
 
@@ -1180,7 +1203,7 @@ def changing_panel_details_capicty(call) :
         bot.edit_message_text('to change your setting tap on buttons  \n\n  sale mode changed  ' ,
                                call.message.chat.id ,
                                call.message.message_id ,
-                               reply_markup = botkb.changin_panel_capcity(id_panel_pk = int(getting_panel_pk(selected_panel)))
+                               reply_markup = BotKb.changin_panel_capcity(id_panel_pk = int(getting_panel_pk(selected_panel)))
                                 )
         
 
@@ -1200,7 +1223,7 @@ def getting_changing_panel_capcity(messgae) :
         changing_panel_capicty['all_capcity'] = False 
         bot.send_message(messgae.chat.id ,
                          'to change your setting tap on buttons  \n\n changing panle capcity /CANCELED/' ,
-                         reply_markup = botkb.changin_panel_capcity(id_panel_pk = int(getting_panel_pk(selected_panel)))
+                         reply_markup = BotKb.changin_panel_capcity(id_panel_pk = int(getting_panel_pk(selected_panel)))
                            )
     else :
         if messgae.text.isdigits():
@@ -1215,7 +1238,7 @@ def getting_changing_panel_capcity(messgae) :
 
             bot.send_message(messgae.chat.id , 
                             'to change your setting tap on buttons  \n\n panel all capcity changed ' ,
-                            reply_markup = botkb.changin_panel_capcity(id_panel_pk = int(getting_panel_pk(selected_panel)))
+                            reply_markup = BotKb.changin_panel_capcity(id_panel_pk = int(getting_panel_pk(selected_panel)))
                             )
         else : 
             bot.send_message(messgae.chat.id  , 'please send integer not str ')  
@@ -1229,7 +1252,7 @@ def changing_panel_details_capicty(call) :
         bot.edit_message_text('to change your setting tap on buttons' ,
                               call.message.chat.id ,
                               call.message.message_id ,
-                              reply_markup= botkb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
+                              reply_markup= BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
                             )
         
 
@@ -1237,21 +1260,21 @@ def changing_panel_details_capicty(call) :
             bot.edit_message_text('to change your setting tap on buttons' ,
                                  call.message.chat.id ,
                                  call.message.message_id ,
-                                 reply_markup= botkb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
+                                 reply_markup= BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
                                  )    
 
 
 
-
+inbounds_selected = {'inbounds': None}
 #> ./management > panel > manage panels - how-to-sending
-@bot.callback_query_handler(func = lambda call : call.data == 'how_to_send' or call.data == 'qrcode_sending' or call.data == 'link_sending')
+@bot.callback_query_handler(func = lambda call : call.data == 'how_to_send' or call.data == 'qrcode_sending' or call.data == 'link_sending' or call.data=='inbounds_selector' or (inbounds_selected['inbounds'] is not None and call.data in inbounds_selected['inbounds']) or call.data =='done_inbounds' or call.data =='back_from_inbounds_selecting')
 def how_to_get_config(call) :
 
     if call.data == 'how_to_send' :
         bot.edit_message_text('specifing how to send configs after success pay' ,
                               call.message.chat.id ,
                               call.message.message_id ,
-                              reply_markup= botkb.how_to_send_links(int(getting_panel_pk(selected_panel)))
+                              reply_markup= BotKb.how_to_send_links(int(getting_panel_pk(selected_panel)))
                              )
 
 
@@ -1291,7 +1314,7 @@ def how_to_get_config(call) :
         bot.edit_message_text('to change your setting tap on buttons  \n\n  qrcode sending mode changed ',
                               call.message.chat.id , 
                               call.message.message_id , 
-                              reply_markup= botkb.how_to_send_links(int(getting_panel_pk(selected_panel)))
+                              reply_markup= BotKb.how_to_send_links(int(getting_panel_pk(selected_panel)))
                               )
 
 
@@ -1334,16 +1357,88 @@ def how_to_get_config(call) :
         bot.edit_message_text('to change your setting tap on buttons  \n\n  link sending mode changed ', 
                               call.message.chat.id , 
                               call.message.message_id ,
-                              reply_markup = botkb.how_to_send_links(int(getting_panel_pk(selected_panel)))
+                              reply_markup = BotKb.how_to_send_links(int(getting_panel_pk(selected_panel)))
                               )
         
-    
+
+
+
+
+    if call.data == 'inbounds_selector' :
+        inbounds = panelsapi.marzban(panel_id= int(getting_panel_pk(selected_panel))).get_inbounds()
+        inbounds_selected['inbounds'] = [f"{tag['protocol']}:{tag['tag']}" for outer in inbounds for tag in inbounds[outer]]
+        
+        Text = f"لیست اینباند های انتخابی \n\n []"
+        bot.edit_message_text(Text , call.message.chat.id ,call.message.message_id , reply_markup= BotKb.select_inbounds(inbounds_selected['inbounds']))
+        
+
+
+    if  (inbounds_selected['inbounds'] is not None and call.data in inbounds_selected['inbounds']):
+        
+        inbounds_list = inbounds_selected['inbounds']
+        for i in inbounds_list:
+            if call.data == i:
+                index_inboundlist = inbounds_list.index(call.data)
+
+                if '✅' in i:
+                    new_values = i.replace('✅', '❌')
+                    inbounds_list[index_inboundlist] = new_values  
+
+                elif '❌' in i:
+                    new_values = i.replace('❌', '✅')
+                    inbounds_list[index_inboundlist] = new_values  
+
+                else:
+                    values = i + '✅'
+                    inbounds_list[index_inboundlist] = values  
+
+        inbounds_checkmark = []
+        for i in inbounds_selected['inbounds']:
+            if  '✅' in i :
+                inbounds_checkmark.append(i.strip('✅'))
+            
+            Text = f"لیست اینباند های انتخابی \n\n {inbounds_checkmark}"
+
+        keyboard = BotKb.select_inbounds(inbounds_list) 
+        bot.edit_message_text(Text , call.message.chat.id , call.message.message_id , reply_markup=keyboard)
+
+
+
+
+    if call.data =='done_inbounds':
+        
+        group_inbounds = {}
+        for items in inbounds_selected['inbounds']:
+            if '✅' in items :
+                key , value = items.split(':' , 1)
+                value = value.strip('✅')
+                if key not in group_inbounds:
+                    group_inbounds[key] = []
+                group_inbounds[key].append(value)
+
+        try :
+            panels_ = v2panel.objects.get(id = int(getting_panel_pk(selected_panel)))
+            panels_.inbounds_selected = json.dumps(group_inbounds , indent=1)
+            panels_.save()
+        except Exception as e :
+            print(f'something went wrong when adding inbounds into database : {e}')
+        
+        bot.edit_message_text("to change your setting tap on buttons" , call.message.chat.id , call.message.message_id , reply_markup= BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel))))
+
+    if call.data == 'back_from_inbounds_selecting':
+        bot.edit_message_text("to change your setting tap on buttons" , call.message.chat.id , call.message.message_id , reply_markup= BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel))))
+
+
+
 
 
 
 
 
 # -------------------------PRODUCTS MANAGEMENT----------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -1353,11 +1448,12 @@ def how_to_get_config(call) :
 #> ./management > product 
 @bot.callback_query_handler(func = lambda call : call.data == 'products_management' or call.data == 'add_product' or call.data == 'remove_product' or call.data == 'manage_products')
 def handle_products(call) :
+
     panel_ =  v2panel.objects.all()
     if call.data == 'products_management' :
         bot.send_message(call.message.chat.id , 
                         text ='you \'re managing products !!' ,
-                        reply_markup = botkb.product_management_menu_in_admin_side()
+                        reply_markup = BotKb.product_management_menu_in_admin_side()
                         )
 
 
@@ -1471,7 +1567,7 @@ def handle_incoming_product_name(message) :
 
             bot.send_message(message.chat.id ,
                             'adding product /CANCELED/' ,
-                             reply_markup = botkb.product_management_menu_in_admin_side()
+                             reply_markup = BotKb.product_management_menu_in_admin_side()
                             )
         else :
 
@@ -1497,7 +1593,7 @@ def handle_incoming_data_limit(message) :
         product_reciving_state.update({key : False for key in product_reciving_state})
         bot.send_message(message.chat.id ,
                          'adding product /CANCELED/ ' , 
-                         reply_markup = botkb.product_management_menu_in_admin_side()
+                         reply_markup = BotKb.product_management_menu_in_admin_side()
                         )
         
     else :
@@ -1530,7 +1626,7 @@ def handle_incoming_expire_date(message) :
     if product_reciving_state['expire_date_receiving'] == False and message.text =='/cancel' :
         product_reciving_state.update({key : False for key in product_reciving_state})
         bot.send_message(message.chat.id , 'adding product /CANCELEC/' ,
-                         reply_markup = botkb.product_management_menu_in_admin_side()
+                         reply_markup = BotKb.product_management_menu_in_admin_side()
                         )
         
     else :
@@ -1556,7 +1652,7 @@ def handle_incoming_expire_date(message) :
         product_reciving_state.update({key : False for key in product_reciving_state})
         bot.send_message(message.chat.id ,
                         'adding product /CANCELEC/' ,
-                        reply_markup = botkb.product_management_menu_in_admin_side()
+                        reply_markup = BotKb.product_management_menu_in_admin_side()
                         )
         
     else :
@@ -1586,7 +1682,7 @@ def handle_incoming_expire_date(message) :
             product_information.update({key : '' for key in product_information})
             bot.send_message(message.chat.id ,
                             'Product successfully added' ,
-                            reply_markup = botkb.product_management_menu_in_admin_side()
+                            reply_markup = BotKb.product_management_menu_in_admin_side()
                             )
                 
         else :
@@ -1607,14 +1703,14 @@ product_remove_panelpk = {'panel_pk' : ''}
 def handle_removing_products (call) :
     
     if call.data.startswith('remove_product_'):
-        if botkb.product_managemet_remove_products(panel_pk = call.data.split('_')[-1]) == 'no_products_to_remove':
+        if BotKb.product_managemet_remove_products(panel_pk = call.data.split('_')[-1]) == 'no_products_to_remove':
             bot.send_message(call.message.chat.id , 'no products \n\n\t add your first' )
         else :
             product_remove_panelpk['panel_pk'] = call.data.split('_')[-1]
             bot.edit_message_text('which products do you want to remove ? \n\n tap to remove product ' ,
                                 call.message.chat.id ,
                                 call.message.message_id ,
-                                reply_markup = botkb.product_managemet_remove_products(panel_pk = call.data.split('_')[-1]))
+                                reply_markup = BotKb.product_managemet_remove_products(panel_pk = call.data.split('_')[-1]))
             
 
 
@@ -1633,7 +1729,7 @@ def handle_removing_products (call) :
             print(f'Error during removing product \n Error_msg : {products_errorRiase}')
             bot.send_message(call.message.chat.id , 
                             text = f'Error during removing product \n\n Error_msg : {products_errorRiase}' ,
-                            reply_markup = botkb.product_managemet_remove_products(panel_pk = product_remove_panelpk['panel_pk'])
+                            reply_markup = BotKb.product_managemet_remove_products(panel_pk = product_remove_panelpk['panel_pk'])
                             )
         
 
@@ -1641,7 +1737,7 @@ def handle_removing_products (call) :
             bot.edit_message_text(f'Product removed succesfully \n\n  product name : {productname.product_name}' ,
                                   call.message.chat.id ,
                                   call.message.message_id ,
-                                  reply_markup = botkb.product_managemet_remove_products(panel_pk = product_remove_panelpk['panel_pk'])
+                                  reply_markup = BotKb.product_managemet_remove_products(panel_pk = product_remove_panelpk['panel_pk'])
                                   )
             
 
@@ -1660,7 +1756,7 @@ def handle_NextPrev_button_in_remove_product(call):
         bot.edit_message_text(f'which products do you want to remove ? \n tap to remove product \n\n page : {page_number}' , 
                               call.message.chat.id ,
                               call.message.message_id ,
-                              reply_markup= botkb.product_managemet_remove_products(panel_pk = product_remove_panelpk['panel_pk'] , page = page_number)
+                              reply_markup= BotKb.product_managemet_remove_products(panel_pk = product_remove_panelpk['panel_pk'] , page = page_number)
                              )
         
 
@@ -1668,7 +1764,7 @@ def handle_NextPrev_button_in_remove_product(call):
         bot.edit_message_text(f'which products do you want to remove ? \n tap to remove product \n\n page : {page_number}' , 
                               call.message.chat.id ,
                               call.message.message_id ,
-                              reply_markup= botkb.product_managemet_remove_products(panel_pk = product_remove_panelpk['panel_pk'] , page = page_number)
+                              reply_markup= BotKb.product_managemet_remove_products(panel_pk = product_remove_panelpk['panel_pk'] , page = page_number)
                              )
 
 
@@ -1712,7 +1808,7 @@ def back_button_in_remove_product(call):
         bot.edit_message_text('you\'re managing products !!',
                               call.message.chat.id ,
                               call.message.message_id ,
-                              reply_markup = botkb.product_management_menu_in_admin_side()
+                              reply_markup = BotKb.product_management_menu_in_admin_side()
                              )
 
 
@@ -1739,7 +1835,7 @@ def back_button_in_remove_product(call):
         bot.edit_message_text('all products listed here', 
                               call.message.chat.id ,
                               call.message.message_id ,
-                              reply_markup = botkb.products_list(panel_pk= panel['panelpk']))
+                              reply_markup = BotKb.products_list(panel_pk= panel['panelpk']))
 
 
 
@@ -1747,7 +1843,7 @@ def back_button_in_remove_product(call):
         bot.edit_message_text('you \re managing products !!' ,
                               call.message.chat.id ,
                               call.message.message_id ,
-                              reply_markup = botkb.product_management_menu_in_admin_side())
+                              reply_markup = BotKb.product_management_menu_in_admin_side())
 
 
 
@@ -1765,7 +1861,7 @@ panel = {'panelpk' : ''}
 def manage_product_choose_panel(call) : 
     
     if call.data.startswith('manage_product_'):
-        if botkb.products_list(call.data.split('_')[-1]) == 'no_product_to_manage':
+        if BotKb.products_list(call.data.split('_')[-1]) == 'no_product_to_manage':
             bot.send_message(call.message.chat.id , 'no products to manage \n\n\t add your first')
         else :
             panel_pk = call.data.split('_')[-1]
@@ -1774,7 +1870,7 @@ def manage_product_choose_panel(call) :
             bot.edit_message_text('all products listed here' , 
                                 call.message.chat.id ,
                                 call.message.message_id ,
-                                reply_markup= botkb.products_list(panel_pk = panel_pk)
+                                reply_markup= BotKb.products_list(panel_pk = panel_pk)
                                 )
         
 
@@ -1786,19 +1882,19 @@ def handle_sorts(call) :
     
     
     if call.data.startswith('down_'):
-        botkb.products_list(panel_pk=panel['panelpk'], down=int(call.data.split('_')[-1]))
+        BotKb.products_list(panel_pk=panel['panelpk'], down=int(call.data.split('_')[-1]))
         bot.edit_message_text('reordered - down',
                               call.message.chat.id,
                               call.message.message_id,
-                              reply_markup=botkb.products_list(panel_pk=panel['panelpk'], page=prodcuts_page['page']))
+                              reply_markup=BotKb.products_list(panel_pk=panel['panelpk'], page=prodcuts_page['page']))
 
 
     if call.data.startswith('up_'):
-        botkb.products_list(panel_pk=panel['panelpk'], up=int(call.data.split('_')[-1]))
+        BotKb.products_list(panel_pk=panel['panelpk'], up=int(call.data.split('_')[-1]))
         bot.edit_message_text('reordered - up',
                               call.message.chat.id,
                               call.message.message_id,
-                              reply_markup=botkb.products_list(panel_pk=panel['panelpk'], page=prodcuts_page['page']))
+                              reply_markup=BotKb.products_list(panel_pk=panel['panelpk'], page=prodcuts_page['page']))
     
 
 
@@ -1813,7 +1909,7 @@ def handle_NextPrev_button_in_remove_product(call):
         bot.edit_message_text(f'which products do you want  ? \n tap  product \n\n page : {page_number}' , 
                               call.message.chat.id ,
                               call.message.message_id ,
-                              reply_markup= botkb.products_list(panel_pk=panel['panelpk']  ,  page = page_number)
+                              reply_markup= BotKb.products_list(panel_pk=panel['panelpk']  ,  page = page_number)
                              )
            
 
@@ -1821,7 +1917,7 @@ def handle_NextPrev_button_in_remove_product(call):
         bot.edit_message_text(f'which products do you want ? \n tap  product \n\n page : {page_number}' , 
                               call.message.chat.id ,
                               call.message.message_id ,
-                              reply_markup= botkb.products_list(panel_pk= panel['panelpk'] ,  page = page_number)
+                              reply_markup= BotKb.products_list(panel_pk= panel['panelpk'] ,  page = page_number)
                              )
         
 
@@ -1849,7 +1945,7 @@ def manage_products_base_id (call) :
         bot.edit_message_text('to change details tap on them ' ,
                               call.message.chat.id ,
                               call.message.message_id , 
-                              reply_markup = botkb.product_changing_details(product_id = int(call.data.split('_')[-1]))
+                              reply_markup = BotKb.product_changing_details(product_id = int(call.data.split('_')[-1]))
                             )
 
 
@@ -1892,7 +1988,7 @@ def get_changing_product_details_name(message):
             changing_product_details['product_name'] = False
             bot.send_message(message.chat.id ,
                              'to change details tap on them' , 
-                             reply_markup = botkb.product_changing_details(product_id = product_id['product_pk'])
+                             reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk'])
                             )
 
         else : 
@@ -1912,7 +2008,7 @@ def get_changing_product_details_name(message):
                 
                 bot.send_message(message.chat.id , 
                                 'to change settings tap to them \n\n prodcut name changed',
-                                reply_markup = botkb.product_changing_details(product_id = product_id['product_pk'])
+                                reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk'])
                                 )
                 
 
@@ -1953,7 +2049,7 @@ def get_changing_product_datalimit_details(message):
             changing_product_details['data-limit'] = False
             bot.send_message(message.chat.id , 
                             'to change details tap on them',
-                            reply_markup = botkb.product_changing_details(product_id = product_id['product_pk'])
+                            reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk'])
                             )
 
         else :
@@ -1977,14 +2073,14 @@ def get_changing_product_datalimit_details(message):
 
                     bot.send_message(message.chat.id ,
                                     'to change settings tap to them \n\n prodcut datalimit changed' ,
-                                    reply_markup = botkb.product_changing_details(product_id = product_id['product_pk'])
+                                    reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk'])
                                     )
                     
                 else :
 
                     bot.send_message(message.chat.id ,
                                     'the input must be string andin this format : 0.00  \n\n to cancel it : /cancel' ,
-                                    reply_markup = botkb.product_changing_details(product_id = product_id['product_pk'])
+                                    reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk'])
                                     )  
                       
             else :
@@ -2025,7 +2121,7 @@ def get_changing_product_expiredate_detalis(message):
             changing_product_details['expire_date'] = False
             bot.send_message(message.chat.id , 
                             'to change details tap on them',
-                            reply_markup = botkb.product_changing_details(product_id = product_id['product_pk'])
+                            reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk'])
                             )
 
         else :
@@ -2044,7 +2140,7 @@ def get_changing_product_expiredate_detalis(message):
 
                 bot.send_message(message.chat.id ,
                                 'to change settings tap to them \n\n prodcut expire date changed' ,
-                                reply_markup = botkb.product_changing_details(product_id = product_id['product_pk']))
+                                reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk']))
                 
 
             else : 
@@ -2082,7 +2178,7 @@ def get_changing_product_expiredate_detalis(message):
             changing_product_details['pro_cost'] = False
             bot.send_message(message.chat.id , 
                             'to change details tap on them',
-                            reply_markup = botkb.product_changing_details(product_id= product_id['product_pk'])
+                            reply_markup = BotKb.product_changing_details(product_id= product_id['product_pk'])
                             )
 
         else :
@@ -2102,7 +2198,7 @@ def get_changing_product_expiredate_detalis(message):
 
                 bot.send_message(message.chat.id ,
                                 'to change settings tap to them \n\n prodcut pro cost changed' ,
-                                reply_markup = botkb.product_changing_details(product_id = product_id['product_pk']))
+                                reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk']))
                 
 
             else : 
@@ -2129,25 +2225,25 @@ wallet_profile_dict = {'charge_wallet': False ,'waiting_for_user_fish' : False ,
 def wallet_profile(call):
 
     if call.data == 'wallet_profile' :
-        bot.edit_message_text('پروفایل من : ' , call.message.chat.id , call.message.message_id , reply_markup= botkb.wallet_profile(call.from_user.id))
+        bot.edit_message_text('پروفایل من : ' , call.message.chat.id , call.message.message_id , reply_markup= BotKb.wallet_profile(call.from_user.id))
 
 
 
 
     if call.data=='back_from_wallet_profile':
-        bot.edit_message_text('welcome', call.message.chat.id , call.message.message_id , reply_markup= botkb.main_menu_in_user_side(user_id= call.from_user.id))
+        bot.edit_message_text('welcome', call.message.chat.id , call.message.message_id , reply_markup= BotKb.main_menu_in_user_side(call.from_user.id))
 
 
 
     if call.data=='user_id':
-        info_list_def = botkb.wallet_profile(call.from_user.id , True)
-        bot.edit_message_text(f'پروفایل من :‌ \n\n ایدی عددی :  <code>{info_list_def[0]}</code> \n\n' , call.message.chat.id , call.message.message_id ,parse_mode="HTML" ,reply_markup= botkb.wallet_profile(call.from_user.id))
+        info_list_def = BotKb.wallet_profile(call.from_user.id , True)
+        bot.edit_message_text(f'پروفایل من :‌ \n\n ایدی عددی :  <code>{info_list_def[0]}</code> \n\n' , call.message.chat.id , call.message.message_id ,parse_mode="HTML" ,reply_markup= BotKb.wallet_profile(call.from_user.id))
 
 
 
     if call.data =='username':
-        info_list_def = botkb.wallet_profile(call.from_user.id , True)
-        bot.edit_message_text(f'پروفایل من :‌ \n\n یوزرنیم :  <code>@{info_list_def[1]}</code> \n\n ' , call.message.chat.id , call.message.message_id ,parse_mode="HTML" ,reply_markup= botkb.wallet_profile(call.from_user.id))
+        info_list_def = BotKb.wallet_profile(call.from_user.id , True)
+        bot.edit_message_text(f'پروفایل من :‌ \n\n یوزرنیم :  <code>@{info_list_def[1]}</code> \n\n ' , call.message.chat.id , call.message.message_id ,parse_mode="HTML" ,reply_markup= BotKb.wallet_profile(call.from_user.id))
         
 
 
@@ -2177,7 +2273,7 @@ def tranfert_money_from_wallet(message):
             wallet_profile_dict['tranfert_money_from_wallet'] = False
             wallet_profile_dict['get_amount_to_transefer'] = False
             wallet_profile_dict['user_id'] = None
-            bot.send_message(message.chat.id , 'پروفایل من :' , reply_markup=botkb.wallet_profile(message.from_user.id))
+            bot.send_message(message.chat.id , 'پروفایل من :' , reply_markup=BotKb.wallet_profile(message.from_user.id))
         else:
             if  not users.objects.filter(user_id = user_id).exists() :
                 bot.send_message(message.chat.id , 'اکانتی با ایدی عددی ارسال شده وجود ندارد \n\n برای کنسل کردن انتقال  : /CANCEL')
@@ -2202,7 +2298,7 @@ def tranfert_money_from_wallet_amount(message):
             wallet_profile_dict['tranfert_money_from_wallet'] = False
             wallet_profile_dict['get_amount_to_transefer'] = False
             wallet_profile_dict['user_id'] = None
-            bot.send_message(message.chat.id , 'پروفایل من :' , reply_markup=botkb.wallet_profile(message.from_user.id))
+            bot.send_message(message.chat.id , 'پروفایل من :' , reply_markup=BotKb.wallet_profile(message.from_user.id))
 
 
         else :
@@ -2249,7 +2345,7 @@ def charge_wallet_profilewallet(message):
     if wallet_profile_dict['charge_wallet'] == True:
         if message.text =='/CANCEL':
             wallet_profile_dict['charge_wallet'] = False
-            bot.send_message(message.chat.id, 'پروفایل من ' , reply_markup=botkb.wallet_profile(message.chat.id))
+            bot.send_message(message.chat.id, 'پروفایل من ' , reply_markup=BotKb.wallet_profile(message.chat.id))
 
         else:
             if message.text.isdigit():
@@ -2288,7 +2384,7 @@ def charge_wallet_profilewallet_fish(message):
     
     if wallet_profile_dict['waiting_for_user_fish'] == True :
         bot.send_message(message.chat.id , 'درخواست شما ارسال شد')
-        bot.send_photo((i.user_id for i in admins.objects.all()) , message.photo[-1].file_id , reply_markup=botkb.wallet_accepts_or_decline(message.chat.id ))
+        bot.send_photo((i.user_id for i in admins.objects.all()) , message.photo[-1].file_id , reply_markup=BotKb.wallet_accepts_or_decline(message.chat.id ))
 
 
 
@@ -2354,11 +2450,11 @@ import os
 os.environ['DJANGO_SETTINGS_MODULE'] = 'TeleBot.settings'
 django.setup()
 prrint('Configured')
-"""
+
 
 @bot.callback_query_handler(func= lambda call : call.data)
 def check_call(call):
     print(call.data)
 
-
+"""
 

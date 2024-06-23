@@ -1,6 +1,6 @@
 from mainrobot.models import v2panel , products  , inovices
 from telebot.types import InlineKeyboardButton , InlineKeyboardMarkup
-
+from tools import QRcode_maker
 
 
 
@@ -212,3 +212,56 @@ def create_inovices(user_id  , panel_name , product_name , data_limit , expire_d
         print(f'an error eccoured when adding inovices : {error}')
 
 
+
+
+def how_to_send(request_ , panel_id , BOT , call):
+    panel_ = v2panel.objects.get(id= panel_id)
+    if panel_.send_qrcode_mode == 1 : #sub QRcode
+        if request_ is False:
+                print('requset is failed')
+        else:
+            sub_link = request_['subscription_url']
+            qr_code_sub = QRcode_maker.make_qrcode(sub_link)
+            if panel_.send_links_mode == 1: #sub link 
+                    BOT.send_photo(call.message.chat.id , caption=f'this is sub link : \n\n{sub_link} ' , photo=qr_code_sub)
+
+
+            elif panel_.send_links_mode == 2: #config link  
+                            links_str = '\n'.join(request_['links'])
+                            BOT.send_photo(call.message.chat.id , caption= None , photo= qr_code_sub)
+                            BOT.send_message(call.message.chat.id , links_str)
+
+
+
+            elif panel_.send_links_mode == 0 : # dont using links in caption
+                        BOT.send_photo(call.message.chat.id , qr_code_sub)
+
+
+
+    elif panel_.send_qrcode_mode == 2 : #config link Qrcode
+            if request_ is False:
+                print('request is failed')
+            else:
+                    config_link = request_['links']
+                    sub_link = request_['subscription_url'] 
+                        
+
+                    if panel_.send_links_mode == 2: # config link 
+                        for config in config_link:
+                            qr_code_config = QRcode_maker.make_qrcode(config) 
+                            BOT.send_photo(call.message.chat.id , caption= f'link : \n\n {config}' , photo= qr_code_config)
+
+                    if panel_.send_links_mode == 1: # sub link 
+                        for config in config_link:
+                            qr_code_config = QRcode_maker.make_qrcode(config) 
+                            BOT.send_photo(call.message.chat.id , photo= qr_code_config)
+                        BOT.send_message(call.message.chat.id , sub_link)
+
+
+                    if panel_.send_links_mode == 0 :
+                        for config in config_link:
+                            qr_code_config = QRcode_maker.make_qrcode(config) 
+                            BOT.send_photo( call.message.chat.id , qr_code_config)
+
+    else:
+        pass     

@@ -17,6 +17,13 @@ class users(models.Model):
 
 
 
+class channels(models.Model):
+    channel_name = models.CharField(max_length=56)
+    channel_url = models.CharField(max_length=256 , blank=True , null=True)
+    channel_id = models.BigIntegerField(blank=True , null=True)
+
+    class Meta:    
+        db_table = 'TeleBot_channels'
 
 
 class admins(models.Model):
@@ -24,10 +31,8 @@ class admins(models.Model):
     is_admin = models.BooleanField(default=False)
     is_owner = models.BooleanField(default=False)
 
-
     def __str__(self):
         return f'User {self.user_id}: Admin={self.is_admin}, Owner={self.is_owner}'
-
 
     class Meta:
         db_table = 'TeleBot_admins'
@@ -51,7 +56,7 @@ class v2panel(models.Model):
     panel_sale_mode = models.PositiveSmallIntegerField(default= 1 , null=False)
     send_links_mode = models.PositiveSmallIntegerField(default=0 , null=False)
     send_qrcode_mode = models.PositiveSmallIntegerField(default= 0 , null=False)
-    #inbounds_selected = models.JSONField(default=None)
+    inbounds_selected = models.JSONField(default=None , blank=True , null= True)
 
     #-2 changed
     all_capcity = models.BigIntegerField(default= 0 , blank= True , null= True)

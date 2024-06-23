@@ -38,16 +38,6 @@ def check_time_passed(inovice_id : int):
 
 
 
-def check_user_in_channel(userid , Bot):
-
-    users_ = users.objects.get(user_id = userid)
-
-    membership_status = Bot.get_chat_member('@vtwoNet' , users_.user_id).status
-    
-    if membership_status in ['member' , 'administrator' , 'creator'] :
-            return True
-    else :
-            return False
 
 
 

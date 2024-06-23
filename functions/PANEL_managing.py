@@ -1,4 +1,4 @@
-
+#this is functions that managing panels
 
 #- output panel pk
 def getting_panel_pk(panel_pk):

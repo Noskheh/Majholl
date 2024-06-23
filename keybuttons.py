@@ -2,35 +2,31 @@ import telebot
 from telebot.types import InlineKeyboardMarkup , InlineKeyboardButton
 from mainrobot.models import v2panel , products , admins , users
 from typing import Union , List
-import re
+import re , panelsapi
 
 
 
-class Botkeyboard:
+class BotkeyBoard:
     
-    @staticmethod
-    def main_menu_in_user_side(user_id : int) :
 
-        user_side_ui_buttom = [[('خرید سرویس جدید ' , 'buy_service') ,('تمدید سرویس ' , 'tamdid_service')] ,
-                               [('کیف پول + حساب کاربری ', 'wallet_profile')]
-                               
-                              ]
-        
+    @staticmethod
+    def main_menu_in_user_side(userId : int) :
+
         keyboard = InlineKeyboardMarkup()
 
-        for row  in user_side_ui_buttom :
-            row_buttons = []
+        user_side_ui_buttom = [[InlineKeyboardButton(' 🚀 خرید سرویس جدید ' , callback_data ='buy_service')] ,
+                               [InlineKeyboardButton(' 📡 وضعیت سرویس' , callback_data ='service_status') ,InlineKeyboardButton(' 🔄  تمدید سرویس ' , callback_data ='tamdid_service')] ,
+                               [InlineKeyboardButton(' 📖 حساب کاربری ',callback_data ='wallet_profile')]
+                              ]
+        
+        for rows in user_side_ui_buttom:
+            keyboard.add(*rows)
 
-            for text , data in row :
-                buttoms = InlineKeyboardButton(text = text , callback_data = data)
-                row_buttons.append(buttoms)
-            keyboard.add(*row_buttons)
 
         for i in admins.objects.all() :
-            if user_id == i.user_id and (i.is_owner == 1 or i.is_admin == 1) :
+            if userId == i.user_id and (i.is_owner == 1) :
                 button_robot_management = InlineKeyboardButton(text = '🤖 مدیریت ربات',callback_data = 'robot_management')
                 keyboard.add(button_robot_management)
-
 
         return keyboard
     
@@ -212,10 +208,7 @@ class Botkeyboard:
 
                                 [(str(panel_reality_flow_out) , 'reality_flow_' + str(i.pk)) , ('reality-flow' , 'reality_flow')] ,
                                         
-                                [('⚙️' , 'panel_capacity_' + str(i.pk)) , ('ظرفیت پنل' , 'panel_capacity')] ,
-
-                                [('نوع ارسال اشتراک' , 'how_to_send')] ,
-                    
+                                [('⚙️' , 'panel_capacity_' + str(i.pk)) , ('ظرفیت پنل' , 'panel_capacity')] ,                    
                                    ]
         
         buttons_management = []
@@ -225,10 +218,11 @@ class Botkeyboard:
             for text , data in row :
                 button = InlineKeyboardButton(text = text ,callback_data = data)
                 buttons_management.append(button)
-        keyboard.add(*buttons_management , row_width = 2 )
-
+        keyboard.add(*buttons_management, row_width=2)
+        button1 = InlineKeyboardButton(text='نوع ارسال اشتراک' ,callback_data= 'how_to_send')
+        button2 = InlineKeyboardButton(text='نوع اینباند ها' , callback_data='inbounds_selector')
         back_button = InlineKeyboardButton('بازگشت ↪️' , callback_data = 'back_to_manageing_panels')   
-        keyboard.add(back_button) 
+        keyboard.add(button1 , button2 , back_button , row_width=1) 
 
 
         return keyboard
@@ -361,7 +355,32 @@ class Botkeyboard:
         
         return keyboard
     
+
+
+    @staticmethod 
+    def select_inbounds(inbound_selected : any = None):
+        keyboard = InlineKeyboardMarkup(row_width= 1)
     
+
+
+        buttons_list = []
+
+        if inbound_selected is not None:
+            for i in inbound_selected:
+                button = InlineKeyboardButton(text= i  , callback_data= i)
+                buttons_list.append(button)
+        keyboard.add(*buttons_list)
+
+        done_buttons = InlineKeyboardButton('اتمام ' , callback_data='done_inbounds')
+        back_buttons = InlineKeyboardButton('بازگشت' , callback_data='back_from_inbounds_selecting')
+        keyboard.add(done_buttons , back_buttons)
+
+
+        return keyboard 
+        
+
+
+
 
 # -------------------------PRODUCTS MANAGEMENT----------------------------------------------------------------------------------------
 
@@ -708,13 +727,7 @@ class Botkeyboard:
     
 
 
-        """
-        top_row = [
-            InlineKeyboardButton('مدیریت پنل ', callback_data='manage_panel_management'),
-            InlineKeyboardButton('وضعیت پنل',callback_data ='panel_status'),
-            InlineKeyboardButton('نام پنل ' ,callback_data= 'panel_name_inmanagement')]
-        keyboard.add(*top_row )
-        """ 
+
 
 
     @staticmethod 
