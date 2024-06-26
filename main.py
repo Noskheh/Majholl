@@ -33,9 +33,9 @@ def start_bot(message) :
 
     if CHECK_USER_CHANNEL(UserId=user_.id , Bot=bot) == True :
         #- Canceling operations : panels , product
-        panel_reciving_state['enable_panel_adding'] = False
+        PANEL_RECEIVING_STATE['Enable_Panel_Adding'] = False
         product_reciving_state['enable_product_adding'] = False
-        changing_panel_details.update({key : False for key in changing_panel_details})
+        CHANGING_PANEL_DETAILS.update({key : False for key in CHANGING_PANEL_DETAILS})
         changing_product_details['enable_changing_product_deatails'] = False
 
         bot.send_message(message.chat.id , ' \ خوش امدید \ ' , reply_markup= BotKb.main_menu_in_user_side(message.from_user.id))
@@ -522,927 +522,400 @@ def handling_all_back_buttons(call) :
 # ---------------------------- MANAGEMENT ----------------------------------------------------------------------------------------
 
 
-
-
-
-
-
-
 #> ./management
-@bot.callback_query_handler(func = lambda call: call.data == 'robot_management' or call.data == 'back_from_management')
+@bot.callback_query_handler(func=lambda call:call.data in ['robot_management' , 'back_from_management'])
 def bot_mangement(call) :
-
-    if call.data == 'robot_management' :
-        bot.edit_message_text('Welcome to bot mangement !!' , 
-                              call.message.chat.id , 
-                              call.message.message_id , 
-                              reply_markup=BotKb.management_menu_in_admin_side()
-                              )
+    if call.data=='robot_management':
+        Text_1='به مدیریت ربات خوش امدید '
+        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.management_menu_in_admin_side())
     
     
-    if call.data == 'back_from_management' :
-        bot.edit_message_text('Welcome' ,
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup = BotKb.main_menu_in_user_side(call.from_user.id)
-                             )
+    if call.data=='back_from_management':
+        Text_back='/خوش آمدید /'
+        bot.edit_message_text(Text_back , call.message.chat.id ,call.message.message_id , reply_markup=BotKb.main_menu_in_user_side(call.from_user.id))
 
 
 
 
 
 
-
-# -------------------------PANEL MANAGEMENT----------------------------------------------------------------------------------------
-
-
-
+# ---------------------------------------------------------------------------------------------------------------------------------#
+# -------------------------PANEL MANAGEMENT----------------------------------------------------------------------------------------#
+# ---------------------------------------------------------------------------------------------------------------------------------#
 
 
 
+#> ./Management > Panels 
+@bot.callback_query_handler(func=lambda call:call.data=='panels_management' or call.data=='back_from_panel_manageing' or call.data=='add_panel' or call.data=='remove_panel' or call.data=='manageing_panels')
+def handle_panel(call):
+
+    Text_0='هیچ پنلی برای حذف کردن پیدا نشد \n\n برای اضافه کردن اولین پنل به ربات /add_panel رو بزنید'
 
 
-#> ./management > panels 
-@bot.callback_query_handler(func = lambda call : call.data == 'panels_management' or call.data == 'add_panel' or call.data == 'remove_panel' or call.data == 'manageing_panels')
-def handle_panel(call) :
+    if call.data=='panels_management' :
+        Text_1='شما در حال مدیریت کردن بخش پنل ها هستید'
+        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.panel_management_menu_in_admin_side())
 
-    if call.data == 'panels_management' :
-        bot.send_message(call.message.chat.id ,
-                         text = 'You\'r managing panels !!' ,
-                         reply_markup = BotKb.panel_management_menu_in_admin_side()
-                        )
+
+
+    if call.data=='back_from_panel_manageing':
+        Text_back='به مدیریت ربات خوش امدید '
+        bot.edit_message_text(Text_back , call.message.chat.id , call.message.message_id , reply_markup=BotKb.management_menu_in_admin_side())
 
 
 
     #- Adding Panels
-    if call.data == 'add_panel' :
-        panel_reciving_state['enable_panel_adding'] = True
-        panel_reciving_state.update({key : False for key in panel_reciving_state if  key != 'enable_panel_adding'})
-        bot.edit_message_text('Send me you\'r Panel-Name ? \n\n to cancel it : /cancel ' ,
-                              call.message.chat.id ,
-                              call.message.message_id 
-                             )
+    if call.data=='add_panel':
+        PANEL_RECEIVING_STATE['Enable_Panel_Adding']=True
+        PANEL_RECEIVING_STATE.update({key : False for key in PANEL_RECEIVING_STATE if  key != 'Enable_Panel_Adding'})
+        Text_2='یک اسم برای پنل خود انتخاب کنید؟\n⚠️.دقت کنید که این اسم مستقیما در قسمت خرید سرویس ها نمایش داده میشود\n\nمثال ها : \n سرویس هوشمند ، سرور مولتی لوکیشن \n\nTO CANCEL : /CANCEL'
+        bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id)
 
 
-    #- Removing panel
-    if call.data == 'remove_panel' :
-        if BotKb.panel_management_remove_panel() == 'no_panel_to_remove' :
-            bot.send_message(call.message.chat.id , 'no panel to remove \n\n\t add your first')
+
+    #- Removing Panels
+    if call.data=='remove_panel':
+        no_panel = BotKb.panel_management_remove_panel()
+        Text_3 = '🚦برای حذف کردن پنلی که میخواهید بر روی اون کلیک کنید'
+        if no_panel=='no_panel_to_remove':
+            bot.send_message(call.message.chat.id , Text_0)
         else :
-            bot.edit_message_text('which panel do you want to remove? \n\n tap to remove panel' ,
-                                call.message.chat.id ,
-                                call.message.message_id ,
-                                reply_markup = BotKb.panel_management_remove_panel()
-                                )
+            bot.edit_message_text(Text_3 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.panel_management_remove_panel())
 
 
-    #- Manging panels
+
+    #- Manging Panels
     if call.data == 'manageing_panels':
+        Text_4='شما در حال مدیریت کردن پنل ها هستید \n\n برای وارد شدن به پنل مدیریت :⚙️ '
         if BotKb.panel_management_manageing_panels() == 'no_panel_to_manage' :
-            bot.send_message(call.message.chat.id , 'no panel to manage \n\n\t add your first')
+            bot.send_message(call.message.chat.id , Text_0)
         else :
-            bot.edit_message_text('Now you\'r managing your panels  \n\n TAP on to manage them : ⚙️' , 
-                                call.message.chat.id , 
-                                call.message.message_id , 
-                                reply_markup=BotKb.panel_management_manageing_panels()
-                                )
+            bot.edit_message_text(Text_4 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.panel_management_manageing_panels())
 
 
 
 
 
-
-panel_reciving_state = {'enable_panel_adding' : False ,
-                        'panel_name_receiving' : False ,
-                        'panel_url_receiving' : False ,
-                        'panel_username_receiving' : False ,
-                        'panel_password_receiving' : False ,
-                        }
-
-panel_information = {'panel_name' : '', 
-                     'panel_url' : '' ,
-                     'panel_username' : '' ,
-                     'panel_password' : '',
-                    }
+#-------------ADD_panel-SECTION
+PANEL_RECEIVING_STATE = {'Enable_Panel_Adding':False , 'Panel_Name_Receiving':False ,
+                        'Panel_Url_Receiving':False , 'Panel_Username_Receiving':False ,
+                        'Panel_Password_Receiving':False}
 
 
-#> ./management > panel > add_panel - panel_name (step-1-1)
-@bot.message_handler(func = lambda message : panel_reciving_state['panel_name_receiving'] == False and panel_reciving_state['enable_panel_adding'] == True )
-def handle_incoming_panelName(message) :
+PANEL_INFORMATION = {'Panel_Name':'' , 'Panel_Url':'' ,
+                     'Panel_Username':'' ,'Panel_Password':''}
 
-    if panel_reciving_state['panel_name_receiving'] == False and message.text == '/cancel' :
-        panel_reciving_state.update({key : False for key in panel_reciving_state})
-        bot.send_message(message.chat.id ,
-                         'adding panel / CANCELED / ' , 
-                         reply_markup = BotKb.panel_management_menu_in_admin_side() 
-                        )
-            
+
+
+#> ./Management > Panels > Add_panel - Panel_Name(step-1)
+@bot.message_handler(func=lambda message:PANEL_RECEIVING_STATE['Enable_Panel_Adding']==True and PANEL_RECEIVING_STATE['Panel_Name_Receiving']==False)
+def handle_incoming_panelName(message):
+    if PANEL_RECEIVING_STATE['Panel_Name_Receiving']==False and (message.text=='/cancel' or message.text=='/cancel'.upper()):
+        PANEL_RECEIVING_STATE.update({key:False for key in PANEL_RECEIVING_STATE})
+        Text_1='✍🏻 .اضافه کردن پنل لغو شد!!'
+        bot.send_message(message.chat.id , Text_1 , reply_markup=BotKb.panel_management_menu_in_admin_side())      
     else :
-
-        if len(message.text) <= 256 :
-            panel_information['panel_name'] = message.text
-            panel_reciving_state['panel_name_receiving'] = True
-            bot.send_message(message.chat.id ,
-                             'Now send me you\'r Panel-Url ? \n\n to cancel it : /cancel ' , 
-                            )
-                    
+        if len(message.text) <= 124 :
+            PANEL_INFORMATION['Panel_Name']=message.text
+            PANEL_RECEIVING_STATE['Panel_Name_Receiving']=True
+            Text_2='✅.اسم پنل دریافت شد\n\n .ادرس پنل را ارسال کنید \n فرمت های صحیح :\nhttp://panelurl.com:port\nhttps://panelurl.com:port\nhttp://ip:port\nhttps://ip:port\n\nTO CANCEL : /CANCEL'
+            bot.send_message(message.chat.id , Text_2)            
         else:
-            bot.send_message(message.chat.id ,
-                            'The name must not be above 256 characters \n TRY AGAIN' ,
-                            )
+            Text_3='❌.اسم پنل نباید بیشتر از 124 حروف باشد'
+            bot.send_message(message.chat.id , Text_3)
 
 
-#> ./management > panel > add_panel - panel_url (step-1-2)
-@bot.message_handler(func= lambda message : panel_reciving_state['panel_url_receiving'] == False and panel_reciving_state['enable_panel_adding'] == True)
-def handle_incoming_panelUrl(message) :
 
-    if panel_reciving_state['panel_url_receiving'] == False and message.text == '/cancel' :
-        panel_reciving_state.update({key : False for key in panel_reciving_state})
-        bot.send_message(message.chat.id , 
-                         'adding panel / CANCELED / ' ,
-                         reply_markup = BotKb.panel_management_menu_in_admin_side() 
-                        )
-            
-    else : 
-        http_or_https_chekcer = re.search(r'(http|https)://[^: ]+' , message.text)
-
-        if  http_or_https_chekcer : 
-            panel_information['panel_url'] = http_or_https_chekcer.group(0)
-            panel_reciving_state['panel_url_receiving'] = True
-            bot.send_message(message.chat.id ,
-                             'Now send me you\'r Panel-Username ? \n\n to cancel it : /cancel ' , 
-                            )
-
-        else : 
-            bot.send_message(message.chat.id ,
-                            'Please send me url in this format : \n\n http://panelurl.com:port  or  https://panelurl.com:port' , 
-                            )
-                
-
-
-#> ./management > panel > add_panel - panel_username (step-1-3)
-@bot.message_handler(func = lambda message : panel_reciving_state['panel_username_receiving'] == False and panel_reciving_state['enable_panel_adding'] == True )
-def handle_incoming_panelUsername(message) :
-
-    if panel_reciving_state['panel_username_receiving'] == False and message.text == '/cancel' :
-        panel_reciving_state.update({key : False for key in panel_reciving_state})
-        bot.send_message(message.chat.id , 'adding panel / CANCELED / ' ,
-                         reply_markup = BotKb.panel_management_menu_in_admin_side() 
-                        )
-            
+#> ./Management > Panel > Add_panel - Panel_Url(step-2)
+@bot.message_handler(func=lambda message:PANEL_RECEIVING_STATE['Enable_Panel_Adding']==True and PANEL_RECEIVING_STATE['Panel_Url_Receiving']==False)
+def handle_incoming_panelUrl(message):
+    if PANEL_RECEIVING_STATE['Panel_Url_Receiving']==False and (message.text=='/cancel' or message.text=='/cancel'.upper()):
+        PANEL_RECEIVING_STATE.update({key:False for key in PANEL_RECEIVING_STATE})
+        Text_1='✍🏻 .اضافه کردن پنل لغو شد!!'
+        bot.send_message(message.chat.id , Text_1 , reply_markup=BotKb.panel_management_menu_in_admin_side())      
     else:
-        panel_information['panel_username'] = message.text
-        panel_reciving_state['panel_username_receiving'] = True
-        bot.send_message(message.chat.id ,
-                        'Now send me you\'r Panel_Password ? \n\n to cancel it : /cancel ' , 
-                        )
-            
+        pattern=(
+                    r'^(http|https):\/\/' 
+                    r'('
+                        r'[\w.-]+'
+                        r'|'
+                        r'(\d{1,3}\.){3}\d{1,3}'
+                    r')'
+                    r'(:\d{1,5})?$'
+                )
+        http_or_https_chekcer=re.search(pattern , message.text)
+        if http_or_https_chekcer: 
+            PANEL_INFORMATION['Panel_Url']=http_or_https_chekcer.group(0)
+            PANEL_RECEIVING_STATE['Panel_Url_Receiving']=True
+            Text_2='✅.آدرس پنل دریافت شد \n\n حالا یوزرنیم پنل رو برای ورود به پنل وارد کنید \n\nTO CANCEL : /CANCEL'
+            bot.send_message(message.chat.id , Text_2)
+        else: 
+            Text_3='فرمت ادرس پنل اشتباه است.❌ \n\n فرمت درست به شکل زیر میباشد.\n\n http://panelurl.com:port \n https://panelurl.com:port \n http://ip:port \n https://ip:port '
+            bot.send_message(message.chat.id ,Text_3) 
 
 
-#> ./management > panel > add_panel - panel_passwd (step-1-4)
-@bot.message_handler(func= lambda message : panel_reciving_state['panel_password_receiving'] == False and panel_reciving_state['enable_panel_adding'] == True )
-def handle_incoming_panelPassword(message) :
 
-    if panel_reciving_state['panel_password_receiving'] == False and message.text == '/cancel' :
-        panel_reciving_state.update({key : False for key in panel_reciving_state})
-        bot.send_message(message.chat.id , 'adding panel / CANCELED / ' ,
-                         reply_markup = BotKb.panel_management_menu_in_admin_side() 
-                        )
-            
+
+
+#> ./Management > Panel > Add_panel - Panel_Username(step-3)
+@bot.message_handler(func=lambda message:PANEL_RECEIVING_STATE['Enable_Panel_Adding']==True and PANEL_RECEIVING_STATE['Panel_Username_Receiving']==False)
+def handle_incoming_panelUsername(message):
+    if PANEL_RECEIVING_STATE['Panel_Username_Receiving'] == False and (message.text=='/cancel' or message.text=='/cancel'.upper()):
+        PANEL_RECEIVING_STATE.update({key:False for key in PANEL_RECEIVING_STATE})
+        Text_1='✍🏻 .اضافه کردن پنل لغو شد!!'
+        bot.send_message(message.chat.id , Text_1 , reply_markup=BotKb.panel_management_menu_in_admin_side() )       
+    else:
+        PANEL_INFORMATION['Panel_Username'] = message.text
+        PANEL_RECEIVING_STATE['Panel_Username_Receiving']=True
+        Text_2='✅یوزرنیم پنل دریافت شد.\n\n حالا پسورد پنل رو برای ورود به پنل وارد کنید.\n\nTO CANCEL : /CANCEL'
+        bot.send_message(message.chat.id , Text_2)
+
+
+
+
+#> ./Management > Panel > Add_panel - Panel_Password(step-4)
+@bot.message_handler(func=lambda message:PANEL_RECEIVING_STATE['Enable_Panel_Adding']==True and PANEL_RECEIVING_STATE['Panel_Password_Receiving']==False)
+def handle_incoming_panelPassword(message):
+    if PANEL_RECEIVING_STATE['Panel_Password_Receiving']==False and (message.text=='/cancel' or message.text=='/cancel'.upper()):
+        PANEL_RECEIVING_STATE.update({key:False for key in PANEL_RECEIVING_STATE})
+        Text_1='✍🏻 .اضافه کردن پنل لغو شد!!'
+        bot.send_message(message.chat.id , Text_1 ,reply_markup=BotKb.panel_management_menu_in_admin_side() )   
     else :
-        panel_information['panel_password'] = message.text
-        panel_reciving_state['panel_password_receiving'] = True
-        panel_id_STRgenerated = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(4))
-
-        try :
-            panel_ = v2panel.objects.create(panel_name = panel_information['panel_name'] ,
-                                            panel_url = panel_information['panel_url'] ,
-                                            panel_username = panel_information['panel_username'] ,
-                                            panel_password=panel_information['panel_password'],
-                                            panel_id_str = panel_id_STRgenerated , 
-                                            )
-
-            panel_information.update({key: '' for key in panel_information })
-            bot.send_message(message.chat.id ,
-                             'Panel successfully added' , 
-                             reply_markup = BotKb.panel_management_menu_in_admin_side()
-                            )
-
-        except Exception as panel_creation:
-            print(f'Error during creating panel \n\t Error-msg : {panel_creation}')
-            bot.send_message(message.chat.id , 
-                            'something went wrong \n\n please try again' ,
-                            )
-            
+        PANEL_INFORMATION['Panel_Password']=message.text
+        PANEL_RECEIVING_STATE['Panel_Password_Receiving']=True
+        add_panel_database(PANEL_INFORMATION['Panel_Name'] , PANEL_INFORMATION['Panel_Url'] , PANEL_INFORMATION['Panel_Username'] , PANEL_INFORMATION['Panel_Password'] , PANEL_INFORMATION , message , bot)
 
 
 
 
 
-#> ./management > panel > remove panel (step-1)
-@bot.callback_query_handler(func = lambda call : call.data in [str(i.id) + 'a' for i in v2panel.objects.all()])
-def handle_removing_panels(call) : 
-
-    if call.data in [str(i.id) + 'a' for i in v2panel.objects.all()] :
-        call_= call.data
-        ob_ = re.sub(r'[A-Za-z]+' , '' , call_)
-
-
-    try :  
-        panel_to_Remove = v2panel.objects.get(id = ob_).delete()
-
-    except Exception as panel_RE :
-        print(f'Error !! during removing panel \n\t Error-msg : {panel_RE}')
-
-
-    try : 
-        products_to_remove = products.objects.filter(panel_id = ob_).delete()
-        
-    except Exception as products_RE:
-        print(f'Error !! during removing panel\'s product \n\t Error-msg :  {products_RE}')
-     
-      
-    bot.edit_message_text("Panel and its products Removed ;\n !Succesfully " , 
-                          call.message.chat.id ,
-                          call.message.message_id ,
-                          reply_markup= BotKb.panel_management_remove_panel()
-                         )
-
-
-#> ./management > panel > remove panel - back button (step-1-2)
-@bot.callback_query_handler(func = lambda call : call.data == 'back_to_manage_panel')
-def back_from_remove_panel(call) :
-    if call.data == 'back_to_manage_panel' :
-        bot.edit_message_text('You\'r managing panels !!' , 
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup = BotKb.panel_management_menu_in_admin_side()
-                            )
-        
 
 
 
 
 
-#> ./management > panel > manageing panels
-selected_panel = {'panel_id' : 0}
-@bot.callback_query_handler(func = lambda call : call.data in [str(i.id) + 'aa' for i in v2panel.objects.all()] or call.data == 'back_to_manageing_panels' or call.data == 'back_to_manage_panel' )
+
+#-------------REMOVE_panel-SECTION
+#> ./Management > Panel > Remove_Panel (step-1)
+@bot.callback_query_handler(func=lambda call:call.data.startswith(('remove_products_panel_' , 'remove_only_panel_' , 'panel_remove_')) or call.data in ['back_to_manage_panel' , 'back_to_remove_panel_section'] )
+def handle_removing_panels(call): 
+    if call.data.startswith('panel_remove_'):
+        panel_id= call.data.split('_')
+        Text_1 ='عمل ترجیحی را انتخاب نمایید'
+        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.panel_management_remove_panel(panel_id[2],kind=True))
+
+    if call.data.startswith('remove_products_panel_'):
+        panel_id = call.data.split("_")
+        remove_panel_database(panel_id[3] , bot , call , product=True)
+
+    if call.data.startswith('remove_only_panel_'):
+        panel_id = call.data.split("_")
+        remove_panel_database(panel_id[3] , bot , call , panel=True)
+
+    #- Back-button
+    if call.data=='back_to_manage_panel':
+        Text_back_1='شما در حال مدیریت کردن بخش پنل ها هستید'
+        bot.edit_message_text(Text_back_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.panel_management_menu_in_admin_side())
+    
+    #- Back-button
+    if call.data=='back_to_remove_panel_section':
+        Text_back_2 = '🚦برای حذف کردن پنلی که میخواهید بر روی اون کلیک کنید'    
+        bot.edit_message_text(Text_back_2 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.panel_management_remove_panel())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#-------------MANAGING_panel-SECTION
+CHANGING_PANEL_DETAILS={'Panel_Name':False , 'Panel_Url':False ,
+                        'Panel_Username':False , 'Panel_Password':False ,
+                        'All_Capcity' : False}
+
+PANEL_ID={'panel_id': int}
+
+#> ./Management > Panel > Manageing_Panels(step-1)
+@bot.callback_query_handler(func=lambda call:call.data.startswith(('manageing_panel_' , 'panel_status_' , 'panel_name_' , 'panel_url_' , 'panel_username_' , 'panel_password_' , 'view_password_' , 'view_username_' , 'reality_flow_' , 'panel_capacity_')) or call.data in ['back_to_manageing_panels'] )
 def handle_panel_management(call) :
-
-    if call.data in [str(i.id) + 'aa' for i in v2panel.objects.all()] :
-        selected_panel['panel_id'] = 0
-        ob_ = re.sub(r'[a-zA-Z]+' , '' , call.data)
-        selected_panel['panel_id'] = int(ob_)
-        bot.edit_message_text('to change your setting tap on buttons',
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup = BotKb.manage_selected_panel(id_panel_pk = ob_)
-                             )
-        
-
-    if call.data == 'back_to_manageing_panels' :
-        selected_panel['panel_id'] = 0
-        bot.edit_message_text('Now you\'r managing your panels  \n\n TAP on to manage them : ⚙️'  ,
-                              call.message.chat.id , 
-                              call.message.message_id ,
-                              reply_markup = BotKb.panel_management_manageing_panels()
-                             )
-
-
-    if call.data == 'back_to_manage_panel' :
-        bot.edit_message_text('Welcome to bot mangement !!' , 
-                              call.message.chat.id , 
-                              call.message.message_id ,
-                              reply_markup = BotKb.panel_management_menu_in_admin_side()
-                            )
-        
-
-
-
-
-
-
-#> ./management > panel > manage panels - Change status (step-1)
-@bot.callback_query_handler(func = lambda call : call.data == 'panel_status_' + getting_panel_pk(selected_panel) )
-def changing_panel_details_status(call):
-    
-    if call.data == 'panel_status_' + getting_panel_pk(selected_panel) :
-        try :
-            panel_ = v2panel.objects.get(id = int(getting_panel_pk(selected_panel)))
-            panel_new_status = 0 if panel_.panel_status == 1 else 1
-            panel_.panel_status = panel_new_status
-            panel_.save()
-
-        except Exception as changestatus_RE:
-            print(f'Error during changing panel status \n\t Error-msg : {changestatus_RE}')
-        
-        bot.edit_message_text(f'to change your setting tap on buttons \n\n Panel status changed : {"enable" if panel_.panel_status == 1 else "disable"}' ,
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup = BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
-                             )
-        
-        bot.answer_callback_query(call.id , 
-                                  'enable' if panel_.panel_status == 1 else 'disable'
-                                 )
-        
-
-
-
-changing_panel_details = {'panel_name' : False , 
-                          'panel_url' : False ,
-                          'panel_username' : False ,
-                          'panel_password' : False , 
-                        }
-
-
-#> ./management > panel > manage panels - change panel_name -1 (step-2.1)
-@bot.callback_query_handler(func = lambda call : call.data  == 'panel_name_' + getting_panel_pk(selected_panel))
-def changing_panel_details_name(call):
-
-    if call.data == 'panel_name_' + getting_panel_pk(selected_panel):
-        changing_panel_details['panel_name'] = True
-        bot.send_message(call.message.chat.id ,
-                        'Send me your new panel name? \n\n to cancel it : /cancel'
-                        )
-
-
-#> ./management > panel > manage panels - change panel_name -2 (step-2.2)
-@bot.message_handler(func = lambda message : changing_panel_details['panel_name'] == True)
-def get_changing_panel_details_name(message):
-    
-    if changing_panel_details['panel_name'] == True and message.text == '/cancel':
-        changing_panel_details['panel_name'] = False
-        bot.send_message(message.chat.id , 
-                         'to change your setting tap on buttons  \n\n changing panel name : / CANCELED / ' ,
-                         reply_markup = BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
-                        )
-    
-    else:
-
-        try:
-            panel_ = v2panel.objects.get(id = int(getting_panel_pk(selected_panel)))
-            panel_new_name = message.text 
-            panel_.panel_name = panel_new_name
-            panel_.save()
-            changing_panel_details['panel_name'] = False
-
-        except Exception as changename_RE:
-            print(f'Error during changing panel name \n\t  Error-msg : {changename_RE}')
-
-        bot.send_message(message.chat.id ,
-                        'to change your setting tap on buttons \n\n Panel name changed' ,
-                        reply_markup=BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
-                        )
-        
-
-
-
-#> ./management > panel > manage panels - change panel_url -1 (step-3-1)
-@bot.callback_query_handler(func = lambda call: call.data  == 'panel_url_' + getting_panel_pk(selected_panel))
-def changing_panel_details_name(call):
-
-    if call.data == 'panel_url_' + getting_panel_pk(selected_panel):
-        changing_panel_details['panel_url'] = True
-        bot.send_message(call.message.chat.id , 
-                         'send me your new panel url? \n\n to cancel it : /cancel'
-                         )
-
-
-#> ./management > panel > manage panels - change panel_url -2 (step-3-2)
-@bot.message_handler(func = lambda message : changing_panel_details['panel_url'] == True)
-def get_changing_panel_details_name(message):
-
-    if changing_panel_details['panel_url'] == True and message.text == '/cancel' :
-        changing_panel_details['panel_url'] = False
-        bot.send_message(message.chat.id , 
-                         'to change your setting tap on buttons  \n\n changing panel url / CANCELED / ' ,
-                         reply_markup = BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
-                        )
-    else :   
-
-        http_or_https_chekcer = re.search(r'(http|https)://[^: ]+' , message.text)
-        
-        if http_or_https_chekcer :
-
-            try:
-
-                panel_ = v2panel.objects.get(id = int(getting_panel_pk(selected_panel)))
-                panel_new_name = http_or_https_chekcer.group(0)
-                panel_.panel_url = panel_new_name
-                panel_.save()
-                changing_panel_details['panel_url'] = False
-
-            except Exception as changeurl_RE:
-                print(f'Error during changing panel url \n\t  Error-msg : {changeurl_RE}')
-
-            bot.send_message(message.chat.id ,
-                     'to change your setting tap on buttons \n\n Panel url changed' ,
-                     reply_markup=BotKb.manage_selected_panel(id_panel_pk= int(getting_panel_pk(selected_panel)))
-                    )
-        else:
-            bot.send_message(message.chat.id , 
-                            'Please send me new url in this format \n\n http://test.com or https://test.com \n\n to cancel it : /cancel'
-                            )
-
-
-
-
-
-
-#> ./management > panel > manage panels - change panel_username -1 (step-4-1)
-@bot.callback_query_handler(func = lambda call: call.data  == 'panel_username_' + getting_panel_pk(selected_panel))
-def changing_panel_details_name(call):
-
-    if call.data == 'panel_username_' + getting_panel_pk(selected_panel) :
-        changing_panel_details['panel_username'] = True
-        bot.send_message(call.message.chat.id , 
-                        'send me your new panel username? \n\n to cancel it : /cancel'
-                        )
-
-
-
-#> ./management > panel > manage panels - change panel_username -2 (step-4-2)
-@bot.message_handler(func = lambda message : changing_panel_details['panel_username'] == True)
-def get_changing_panel_details_name(message):
-
-    if changing_panel_details['panel_username'] == True and message.text == '/cancel' :
-        changing_panel_details['panel_username'] = False
-        bot.send_message(message.chat.id , 
-                         'to change your setting tap on buttons  \n\n changing panel username / CANCELED / ' ,
-                         reply_markup = BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
-                        )
-    else:
-
-        try:
-            panel_ = v2panel.objects.get(id = int(getting_panel_pk(selected_panel)))
-            panel_new_name = message.text 
-            panel_.panel_username = panel_new_name
-            panel_.save()
-            changing_panel_details['panel_username'] = False
-
-        except Exception as changeusername_RE:
-            print(f'Error during changing panel username \n\t  Error-msg : {changeusername_RE}')
-
-        bot.send_message(message.chat.id ,
-                    'to change your setting tap on buttons \n\n panel username changed' ,
-                    reply_markup=BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
-                    )
+    call_data=call.data.split('_')
+    PANEL_ID['panel_id']=call_data[2]
     
 
+    if call.data.startswith(('manageing_panel_')):
+        Text_1='🔗برای تغییر تنظیمات  بر روی دکمه ها کلیک کنید'
+        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_selected_panel(panel_pk=call_data[2]))
 
-
-
-
-#> ./management > panel > manage panels - change panel_password -1 (step-5-1)
-@bot.callback_query_handler(func = lambda call: call.data.startswith('panel_password_')  or call.data == 'panel_password')
-def changing_panel_details_name(call):
-
-    list_calls = call.data.split('_')
+    #- Back butotn 
+    if call.data=='back_to_manageing_panels':
+        Text_back='شما در حال مدیریت کردن بخش پنل ها هستید'
+        bot.edit_message_text(Text_back , call.message.chat.id , call.message.message_id , reply_markup=BotKb.panel_management_manageing_panels())
     
-    if  call.data =='panel_password' :
-        BotKb.manage_selected_panel(id_panel_pk = selected_panel['panel_id'] , passwd = True)
-        bot.edit_message_text('to change your setting tap on buttons',
-                                call.message.chat.id ,
-                                call.message.message_id ,
-                                reply_markup = BotKb.manage_selected_panel(id_panel_pk = selected_panel['panel_id'] , passwd = True)
-                                )
+    
+    #- Change-Status
+    if call.data.startswith('panel_status_'):
+        change_panel_status(call_data[2] , bot , call)
+
+
+    #- Change-Name
+    if call.data.startswith('panel_name_'):
+        CHANGING_PANEL_DETAILS['Panel_Name']=True
+        Text_2=f'یک نام جدید برای پنل وارد کنید \n\nنام فعلی : {call_data[3]}\n\nTO CANCEL : /CANCEL'
+        bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id )
+        
+
+    #- Change-Url
+    if call.data.startswith('panel_url_'):
+        CHANGING_PANEL_DETAILS['Panel_Url'] = True
+        Text_3=f'ادرس جدید پنل را وارد کنید \n\n ادرس فعلی :{call_data[3]}\n\nTO CANCEL : /CANCEL'
+        bot.edit_message_text(Text_3 , call.message.chat.id , call.message.message_id)
+
+
+    #- Change-Username
+    if call.data.startswith('panel_username_'):
+        CHANGING_PANEL_DETAILS['Panel_Username'] = True
+        Text_4=f'یوزر نیم جدید پنل را وارد کنید \n\nTO CANCEL : /CANCEL'
+        bot.edit_message_text(Text_4 , call.message.chat.id , call.message.message_id)
+
+    #- Show-Username
+    if  call.data.startswith('view_username_'):
+        BotKb.manage_selected_panel(panel_pk=call_data[2] , username=True)
+        Text_5='🔗برای تغییر تنظیمات  بر روی دکمه ها کلیک کنید'
+        bot.edit_message_text(Text_5 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_selected_panel(panel_pk=call_data[2] , username=True))
             
-    if call.data.startswith('panel_password_') :
-        changing_panel_details['panel_password'] = True
-        bot.send_message(call.message.chat.id , 
-                            'send me your new panel password? \n\n to cancel it : /cancel'
-                            )
 
-
-
-
-#> ./management > panel > manage panels - change panel_password -2 (step-5-2)
-@bot.message_handler(func = lambda message : changing_panel_details['panel_password'] == True)
-def get_changing_panel_details_name(message):
-
-    if changing_panel_details['panel_password'] == True and message.text == '/cancel' :
-        changing_panel_details['panel_password'] == False
-        bot.send_message(message.chat.id , 
-                         'to change your setting tap on buttons  \n\n changing panel password / CANCELED / ' ,
-                         reply_markup = BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
-                        )
-    else : 
-
-        try:
-            panel_ = v2panel.objects.get(id = int(getting_panel_pk(selected_panel)))
-            panel_new_name = message.text 
-            panel_.panel_password = panel_new_name
-            panel_.save()
-            changing_panel_details['panel_password'] = False
-
-        except Exception as changepassword_RE:
-            print(f'Error during changing panel username \n\t  Error-msg : {changepassword_RE}')
-
-        bot.send_message(message.chat.id ,
-                    'to change your setting tap on buttons \n\n panel password changed' ,
-                    reply_markup=BotKb.manage_selected_panel(id_panel_pk= int(getting_panel_pk(selected_panel)))
-                    )
-        
-#//TODO add security deatils for password button
-
-
-
-
-#> ./management > panel > manage panels - change panel_reality -1 (step-6-1)
-@bot.callback_query_handler(func = lambda call : call.data == 'reality_flow_'+ getting_panel_pk(selected_panel))
-def changing_panel_details_reality(call):
-
-    if call.data == 'reality_flow_'+ getting_panel_pk(selected_panel):
-        bot.edit_message_text('Choose your prefer setting' , 
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup= BotKb.changin_reality_flow() 
-                             )
-
-
-
-#> ./management > panel > manage panels - change panel_reality -2 (step-6-2)
-@bot.callback_query_handler(func = lambda call :  call.data == 'xtls-rprx-vision' or call.data == 'None')
-def changing_panel_details_reality(call):
-
-    if call.data == 'xtls-rprx-vision' :
-
-        try : 
-            panel_ = v2panel.objects.get(id = int(getting_panel_pk(selected_panel)))
-            panel_new_reality = call.data 
-            panel_.reality_flow = panel_new_reality
-            panel_.save()
-
-        except Exception as changereality_RE:
-            print(f'Error during changing panel reality \n\t  Error-msg : {changereality_RE}')
-        bot.edit_message_text('to change your setting tap on buttons \n\n Reality flow changed ' ,
-                              call.message.chat.id , 
-                              call.message.message_id ,
-                              reply_markup = BotKb.manage_selected_panel(id_panel_pk= int(getting_panel_pk(selected_panel)))
-                             )
-
-
-    if call.data == 'None' :
-
-        try : 
-            panel_ = v2panel.objects.get(id = int(getting_panel_pk(selected_panel)))
-            panel_new_reality = call.data 
-            panel_.reality_flow = panel_new_reality
-            panel_.save()
-
-        except Exception as changereality_RE_2:
-            print(f'Error during changing panel username \n\t  Error-msg : {changereality_RE_2}')
-
-        bot.edit_message_text('to change your setting tap on buttons \n\n Reality flow changed ' , 
-                              call.message.chat.id , 
-                              call.message.message_id , 
-                              reply_markup = BotKb.manage_selected_panel(id_panel_pk= int(getting_panel_pk(selected_panel)))
-                              )
+    #- Change-Password
+    if call.data.startswith('panel_password_'):
+        CHANGING_PANEL_DETAILS['Panel_Password'] = True
+        Text_6=f' پسورد جدید پنل را وارد کنید \n\nTO CANCEL : /CANCEL'
+        bot.edit_message_text(Text_6 , call.message.chat.id , call.message.message_id)
         
 
+    #- Show-Password
+    if  call.data.startswith('view_password_'):
+        BotKb.manage_selected_panel(panel_pk=call_data[2] , passwd=True)
+        Text_7='🔗برای تغییر تنظیمات  بر روی دکمه ها کلیک کنید'
+        bot.edit_message_text(Text_7 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_selected_panel(panel_pk=call_data[2] , passwd=True))
+            
+
+    #- Change-RealityFLow
+    if call.data.startswith('reality_flow_'):
+        Text_8='حالت ریلیتی - فلو برای کل اشتراک ها رواین پنل انتخاب کنید'
+        bot.edit_message_text(Text_8 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.changin_reality_flow() )
+
+    #- Change-Capcity 
+    if call.data.startswith('panel_capacity_'):
+        Text_9='🔗برای تغییر تنظیمات  بر روی دکمه ها کلیک کنید'
+        bot.edit_message_text(Text_9 , call.message.chat.id , call.message.message_id , reply_markup = BotKb.changin_panel_capcity(panel_pk=call_data[2]))
 
 
 
 
-#> ./management > panel > manage panels - change panel_capcity -1 (step-7-1)
-changing_panel_capicty = {'all_capcity' : False}
 
-@bot.callback_query_handler(func = lambda call : call.data == 'panel_capacity_'+ getting_panel_pk(selected_panel) )
-def changing_panel_details_capicty(call) :
+#> ./Management > Panel > Manageing_Panels - Change (Panel_Name , Panel_Url , Panel_Username , Panel_Password)(step-2)
+@bot.message_handler(func=lambda message:CHANGING_PANEL_DETAILS['Panel_Name']==True or CHANGING_PANEL_DETAILS['Panel_Url']==True or CHANGING_PANEL_DETAILS['Panel_Username']==True or CHANGING_PANEL_DETAILS['Panel_Password']==True or CHANGING_PANEL_DETAILS['All_Capcity']==True)
+def get_CHANGING_PANEL_DETAILS_name(message):
 
-    if call.data == 'panel_capacity_' + getting_panel_pk(selected_panel) :
-        bot.edit_message_text('to change your setting tap on buttons' ,
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup = BotKb.changin_panel_capcity(id_panel_pk = int(getting_panel_pk(selected_panel)))
-                             )
+    #- Change-Name
+    if CHANGING_PANEL_DETAILS['Panel_Name']==True:
+        change_panel_name(PANEL_ID['panel_id'], bot , message , CHANGING_PANEL_DETAILS)
 
+    #- Change-Url
+    if CHANGING_PANEL_DETAILS['Panel_Url']==True:
+        change_panel_url(PANEL_ID['panel_id'] , bot , message , CHANGING_PANEL_DETAILS)
 
+    #- Change-Username
+    if CHANGING_PANEL_DETAILS['Panel_Username']==True:
+        change_panel_username(PANEL_ID['panel_id'] , bot , message , CHANGING_PANEL_DETAILS)
 
-#> ./management > panel > manage panels - change panel_capcity -2 (step-7-2)
-@bot.callback_query_handler(func = lambda call : call.data == 'capcity_mode' or call.data == 'sale_mode' or call.data == 'all_capcity' or call.data == 'sold_capcity' or call.data == 'remaining_capcity')
-def changing_panel_details_capicty(call) :
+    #- Change-Password
+    if CHANGING_PANEL_DETAILS['Panel_Password']==True:
+        change_panel_password(PANEL_ID['panel_id'] , bot , message , CHANGING_PANEL_DETAILS)
 
-    if call.data == 'capcity_mode' :
-
-        panel_ = v2panel.objects.get(id = int(getting_panel_pk(selected_panel)))
-
-        if panel_.capcity_mode == 0 :
-
-            try :
-                new_capcity = 1
-                panel_.capcity_mode = new_capcity
-                panel_.save()
-
-            except Exception as capcity_mode_1 :
-                print(f'Error during changing panel capcity mode \n\t  Error-msg : {capcity_mode_1}')
+    #- Change-Allcapcity
+    if CHANGING_PANEL_DETAILS['All_Capcity']==True:
+        change_panel_allcapcity(PANEL_ID['panel_id'] , bot , message , CHANGING_PANEL_DETAILS)
 
 
-        elif panel_.capcity_mode == 1 :
 
-            try :
-                new_capcity = 2
-                panel_.capcity_mode = new_capcity
-                panel_.save()
+#> ./Managemetn > Panel > Manageing_Panels - Change Reality-Flow(step-3)
+@bot.callback_query_handler(func=lambda call:call.data in ['None_realityFlow' , 'xtls-rprx-vision'])
+def reality_flow(call):
 
-            except Exception as capcity_mode_2 :
-                print(f'Error during changing panel capcity mode \n\t  Error-msg : {capcity_mode_2}')
-
-        else :
-            try :
-                new_capcity = 0
-                panel_.capcity_mode = new_capcity
-                panel_.save()
-
-            except Exception as capcity_mode_3 :
-                    print(f'Error during changing panel capcity mode \n\t  Error-msg : {capcity_mode_3}')
-
-        bot.edit_message_text('to change your setting tap on buttons  \n\n capcity mode changed  ' ,
-                              call.message.chat.id , 
-                              call.message.message_id , 
-                               reply_markup= BotKb.changin_panel_capcity(id_panel_pk= int(getting_panel_pk(selected_panel)))
-                             )
-
-
-    if call.data == 'sale_mode' :
-
-        panel_ = v2panel.objects.get(id = int(getting_panel_pk(selected_panel)))
-
-        if panel_.panel_sale_mode == 0 :
-
-            try :
-                new_panel_sale_mode = 1
-                panel_.panel_sale_mode = new_panel_sale_mode
-                panel_.save()
-
-            except Exception as sale_mode_1 :
-                print(f'Error during changing panel sale mode \n\t  Error-msg : {sale_mode_1}')
-
-
-        elif panel_.panel_sale_mode == 1 :
-
-            try :
-                new_panel_sale_mode = 2
-                panel_.panel_sale_mode = new_panel_sale_mode
-                panel_.save()
-
-            except Exception as sale_mode_2 :
-                print(f'Error during changing panel sale mode \n\t  Error-msg : {sale_mode_2}')
-
-        else : 
-
-            try :
-                new_panel_sale_mode = 0
-                panel_.panel_sale_mode = new_panel_sale_mode
-                panel_.save()
-
-            except Exception as sale_mode_3 :
-                print(f'Error during changing panel sale mode \n\t  Error-msg : {sale_mode_3}')
-
-        bot.edit_message_text('to change your setting tap on buttons  \n\n  sale mode changed  ' ,
-                               call.message.chat.id ,
-                               call.message.message_id ,
-                               reply_markup = BotKb.changin_panel_capcity(id_panel_pk = int(getting_panel_pk(selected_panel)))
-                                )
+    #- Reality - flow 
+    if call.data=='xtls-rprx-vision':
+        change_panel_realityflow(PANEL_ID['panel_id'] , bot , call , reality=True)
         
+    #-none Reality - flow 
+    if call.data=='None_realityFlow':
+        change_panel_realityflow(PANEL_ID['panel_id'] , bot , call , none_reality=True)
 
 
-    if call.data == 'all_capcity' :
-        changing_panel_capicty['all_capcity'] = True
-        bot.send_message(call.message.chat.id , 
-                        'send me your all capcity nmuber ? \n\n to cancel it : /cancel'
-                        )
 
 
-#> ./management > panel > manage panels - change panel_capcity -3 (step-7-3)
-@bot.message_handler(func = lambda messgae : changing_panel_capicty['all_capcity'] == True)
-def getting_changing_panel_capcity(messgae) :
-   
-    if changing_panel_capicty['all_capcity'] == True and messgae.text =='/cancel' :
-        changing_panel_capicty['all_capcity'] = False 
-        bot.send_message(messgae.chat.id ,
-                         'to change your setting tap on buttons  \n\n changing panle capcity /CANCELED/' ,
-                         reply_markup = BotKb.changin_panel_capcity(id_panel_pk = int(getting_panel_pk(selected_panel)))
-                           )
-    else :
-        if messgae.text.isdigits():
-            try : 
-                panel_ = v2panel.objects.get(id = int(getting_panel_pk(selected_panel)))
-                panel_new_all_capcity = messgae.text
-                panel_.all_capcity = panel_new_all_capcity
-                panel_.save()
+#> ./Management > Panel > Manageing_Panels - Change (Capcity-Mode , Sale-Mode)(step-4)
+@bot.callback_query_handler(func=lambda call:call.data.startswith('all_capcity_') or call.data in [ 'capcity_mode' , 'sale_mode'  , 'back_from_panel_capcity_list'])
+def CHANGING_PANEL_DETAILS_capicty(call) :
+    #- Capcity-mode
+    if call.data=='capcity_mode':
+        change_panel_capcitymode(PANEL_ID['panel_id'] , bot , call)
 
-            except Exception as capcitychanging_RE :
-                    print(f'Error during changing panel capcity changing \n\t  Error-msg : {capcitychanging_RE}')
+    #- Sale-mode
+    if call.data=='sale_mode':
+        change_panel_salemode(PANEL_ID['panel_id'] , bot , call)
 
-            bot.send_message(messgae.chat.id , 
-                            'to change your setting tap on buttons  \n\n panel all capcity changed ' ,
-                            reply_markup = BotKb.changin_panel_capcity(id_panel_pk = int(getting_panel_pk(selected_panel)))
-                            )
-        else : 
-            bot.send_message(messgae.chat.id  , 'please send integer not str ')  
+    #- All-Capcity
+    if call.data.startswith('all_capcity_') :
+        CHANGING_PANEL_DETAILS['All_Capcity'] = True
+        call_data = call.data.split("_")[2]
+        Text_1=f'مقدار عددی ظرفیت کلی پنل را ارسال کنید \n ظرفیت فعلی :{call_data}\n\nTO CANCEL : /CANCEL'
+        bot.send_message(call.message.chat.id , Text_1)
 
-
-#> ./management > panel > manage panels - change panel_capcity back_button -4 (step-7-4)
-@bot.callback_query_handler(func = lambda call : call.data == 'back_from_panel_capcity_list' or call.data == 'back_from_panel_howtosend_list')
-def changing_panel_details_capicty(call) :
 
     if call.data == 'back_from_panel_capcity_list' :
-        bot.edit_message_text('to change your setting tap on buttons' ,
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup= BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
-                            )
-        
-
-    if call.data == 'back_from_panel_howtosend_list' : 
-            bot.edit_message_text('to change your setting tap on buttons' ,
-                                 call.message.chat.id ,
-                                 call.message.message_id ,
-                                 reply_markup= BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel)))
-                                 )    
-
-
-
-inbounds_selected = {'inbounds': None}
-#> ./management > panel > manage panels - how-to-sending
-@bot.callback_query_handler(func = lambda call : call.data == 'how_to_send' or call.data == 'qrcode_sending' or call.data == 'link_sending' or call.data=='inbounds_selector' or (inbounds_selected['inbounds'] is not None and call.data in inbounds_selected['inbounds']) or call.data =='done_inbounds' or call.data =='back_from_inbounds_selecting')
-def how_to_get_config(call) :
-
-    if call.data == 'how_to_send' :
-        bot.edit_message_text('specifing how to send configs after success pay' ,
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup= BotKb.how_to_send_links(int(getting_panel_pk(selected_panel)))
-                             )
-
-
-    if call.data == 'qrcode_sending' :
-        panel_ = v2panel.objects.get(id = int(getting_panel_pk(selected_panel)))
-
-        if panel_.send_qrcode_mode == 0 :
-
-            try :
-                new_send_qrcode_moode = 1
-                panel_.send_qrcode_mode = new_send_qrcode_moode 
-                panel_.save()   
-
-            except Exception as qrcodechaing_RE_1 :
-                print(f'Error during changing panel Qrcode changing \n\t  Error-msg : {qrcodechaing_RE_1}')
-
-        elif panel_.send_qrcode_mode == 1 :
-
-            try :
-                new_send_qrcode_moode = 2
-                panel_.send_qrcode_mode = new_send_qrcode_moode 
-                panel_.save()    
-
-            except Exception as qrcodechaing_RE_2 :
-                print(f'Error during changing panel Qrcode changing \n\t  Error-msg : {qrcodechaing_RE_2}')
-
-        else:
-
-            try :
-                new_send_qrcode_moode = 0
-                panel_.send_qrcode_mode = new_send_qrcode_moode 
-                panel_.save()  
-
-            except Exception as qrcodechaing_RE_3 :
-                print(f'Error during changing panel Qrcode changing \n\t  Error-msg : {qrcodechaing_RE_3}')    
-
-        bot.edit_message_text('to change your setting tap on buttons  \n\n  qrcode sending mode changed ',
-                              call.message.chat.id , 
-                              call.message.message_id , 
-                              reply_markup= BotKb.how_to_send_links(int(getting_panel_pk(selected_panel)))
-                              )
+        Text_back='🔗برای تغییر تنظیمات  بر روی دکمه ها کلیک کنید'
+        bot.edit_message_text(Text_back , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_selected_panel(panel_pk=PANEL_ID['panel_id']))
 
 
 
 
-    if call.data =='link_sending' :
+#> ./Management > Panel > Manageing_Panels - Change (How-To-Send , Qrcode-Mode , Config-Mode) (step-7-4)
+@bot.callback_query_handler(func=lambda call:call.data.startswith('send_config_') or call.data in ['qrcode_sending' , 'link_sending' , 'back_from_panel_howtosend_list'])
+def CHANGING_PANEL_DETAILS_capicty(call) :
+    
+    if call.data.startswith('send_config_'):
+        Text_1='تعیین کنید هنگام خرید موفق اشتراک  لینک ها چگونه ارسال شوند ⁉️'
+        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.how_to_send_links(PANEL_ID['panel_id']))
 
-        panel_ = v2panel.objects.get(id = int(getting_panel_pk(selected_panel)))
+    #- QRcode
+    if call.data =='qrcode_sending':
+        change_panel_qrcode(PANEL_ID['panel_id'] , bot , call)
 
-        if panel_.send_links_mode == 0 :
+    #- Config
+    if call.data =='link_sending':
+        change_panel_config(PANEL_ID['panel_id'] , bot , call)
 
-            try :
-                new_send_links_mode = 1
-                panel_.send_links_mode = new_send_links_mode
-                panel_.save()    
-
-            except Exception as linkchanging_RE_1 :
-                print(f'Error during changing panel link changing \n\t  Error-msg : {linkchanging_RE_1}')
-
-        elif panel_.send_links_mode == 1 :
-
-            try :
-                new_send_links_mode = 2
-                panel_.send_links_mode = new_send_links_mode
-                panel_.save()    
-
-            except Exception as linkchanging_RE_2 :
-                print(f'Error during changing panel link changing \n\t  Error-msg : {linkchanging_RE_2}') 
-
-        else :
-
-            try :
-                new_send_links_mode = 0
-                panel_.send_links_mode = new_send_links_mode
-                panel_.save()   
-
-            except Exception as linkchanging_RE_3 :
-                print(f'Error during changing panel link changing \n\t  Error-msg : {qrcodechaing_RE_3}')          
-
-        bot.edit_message_text('to change your setting tap on buttons  \n\n  link sending mode changed ', 
-                              call.message.chat.id , 
-                              call.message.message_id ,
-                              reply_markup = BotKb.how_to_send_links(int(getting_panel_pk(selected_panel)))
-                              )
-        
+    #- Back button
+    if call.data=='back_from_panel_howtosend_list': 
+            Text_back='🔗برای تغییر تنظیمات  بر روی دکمه ها کلیک کنید'
+            bot.edit_message_text(Text_back , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_selected_panel(panel_pk=PANEL_ID['panel_id']))
+    
 
 
 
-
-    if call.data == 'inbounds_selector' :
-        inbounds = panelsapi.marzban(panel_id= int(getting_panel_pk(selected_panel))).get_inbounds()
-        inbounds_selected['inbounds'] = [f"{tag['protocol']}:{tag['tag']}" for outer in inbounds for tag in inbounds[outer]]
-        
-        Text = f"لیست اینباند های انتخابی \n\n []"
-        bot.edit_message_text(Text , call.message.chat.id ,call.message.message_id , reply_markup= BotKb.select_inbounds(inbounds_selected['inbounds']))
-        
-
-
-    if  (inbounds_selected['inbounds'] is not None and call.data in inbounds_selected['inbounds']):
-        
-        inbounds_list = inbounds_selected['inbounds']
-        for i in inbounds_list:
-            if call.data == i:
-                index_inboundlist = inbounds_list.index(call.data)
-
-                if '✅' in i:
-                    new_values = i.replace('✅', '❌')
-                    inbounds_list[index_inboundlist] = new_values  
-
-                elif '❌' in i:
-                    new_values = i.replace('❌', '✅')
-                    inbounds_list[index_inboundlist] = new_values  
-
-                else:
-                    values = i + '✅'
-                    inbounds_list[index_inboundlist] = values  
-
-        inbounds_checkmark = []
-        for i in inbounds_selected['inbounds']:
-            if  '✅' in i :
-                inbounds_checkmark.append(i.strip('✅'))
-            
-            Text = f"لیست اینباند های انتخابی \n\n {inbounds_checkmark}"
-
-        keyboard = BotKb.select_inbounds(inbounds_list) 
-        bot.edit_message_text(Text , call.message.chat.id , call.message.message_id , reply_markup=keyboard)
-
-
-
-
-    if call.data =='done_inbounds':
-        
-        group_inbounds = {}
-        for items in inbounds_selected['inbounds']:
-            if '✅' in items :
-                key , value = items.split(':' , 1)
-                value = value.strip('✅')
-                if key not in group_inbounds:
-                    group_inbounds[key] = []
-                group_inbounds[key].append(value)
-
-        try :
-            panels_ = v2panel.objects.get(id = int(getting_panel_pk(selected_panel)))
-            panels_.inbounds_selected = json.dumps(group_inbounds , indent=1)
-            panels_.save()
-        except Exception as e :
-            print(f'something went wrong when adding inbounds into database : {e}')
-        
-        bot.edit_message_text("to change your setting tap on buttons" , call.message.chat.id , call.message.message_id , reply_markup= BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel))))
-
-    if call.data == 'back_from_inbounds_selecting':
-        bot.edit_message_text("to change your setting tap on buttons" , call.message.chat.id , call.message.message_id , reply_markup= BotKb.manage_selected_panel(id_panel_pk = int(getting_panel_pk(selected_panel))))
-
-
-
-
-
-
-
-
-# -------------------------PRODUCTS MANAGEMENT----------------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-
+#---------------------------------------------------------------------------------------------------------------------------------#
+# -------------------------PRODUCTS-MANAGEMENT------------------------------------------------------------------------------------#
+# --------------------------------------------------------------------------------------------------------------------------------#
 
 
 #> ./management > product 
@@ -2214,7 +1687,11 @@ def get_changing_product_expiredate_detalis(message):
 
 
 
-# ------------------------- Wallet-Profile ----------------------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------#
+# ------------------------- Wallet-Profile ----------------------------------------------------------------------------------------#
+# ---------------------------------------------------------------------------------------------------------------------------------#
 
 wallet_profile_dict = {'charge_wallet': False ,'waiting_for_user_fish' : False ,
                        'tranfert_money_from_wallet' : False , 'get_amount_to_transefer' : False , 'user_id' : None}

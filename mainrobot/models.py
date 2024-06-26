@@ -77,7 +77,7 @@ class products(models.Model):
     data_limit = models.DecimalField(max_digits=12 , decimal_places=2 )
     expire_date = models.SmallIntegerField()
     pro_cost = models.BigIntegerField()
-    panel_id = models.SmallIntegerField()
+    panel_id = models.SmallIntegerField(null=True , blank=True)
     categori_id = models.SmallIntegerField(null=True, blank=True)
     pro_id_str = models.CharField(max_length=36 , null=True , blank=True)
     sort_id = models.SmallIntegerField(null=True , blank=True)

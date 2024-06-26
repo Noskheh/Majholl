@@ -25,7 +25,7 @@ class BotkeyBoard:
 
         for i in admins.objects.all() :
             if userId == i.user_id and (i.is_owner == 1) :
-                button_robot_management = InlineKeyboardButton(text = '🤖 مدیریت ربات',callback_data = 'robot_management')
+                button_robot_management = InlineKeyboardButton(text = '⚙️ مدیریت ربات',callback_data = 'robot_management')
                 keyboard.add(button_robot_management)
 
         return keyboard
@@ -34,23 +34,18 @@ class BotkeyBoard:
 
     @staticmethod 
     def management_menu_in_admin_side() :
-
-        admin_side_ui_buttom = [[('🎛 مدیریت پنل ها ' , 'panels_management') , ('🎛مدیریت فروشگاه' , 'products_management')] , 
-                                [('بازگشت↪️' , 'back_from_management')]
-
-                                ]
-        
         keyboard = InlineKeyboardMarkup()
-
+        admin_side_ui_buttom = [[('🖥 مدیریت پنل ها ' , 'panels_management') , ('🎛مدیریت فروشگاه' , 'products_management')] ,
+                                [('📈آمار ربات' , 'bot_statics') ] , 
+                                [('👤مدیریت کاربران', 'users_management'), ('🧑🏼‍💻مدیریت ادمین ها' , 'admins_management')] ,
+                                [('🤖تنظیمات ربات ', 'bot_managment')], 
+                                [('بازگشت به منوی اصلی 🏘' , 'back_from_management')]]
         for row in admin_side_ui_buttom :
             row_buttons = []
-
             for text , data in row :
                 buttons = InlineKeyboardButton(text = text , callback_data = data)
                 row_buttons.append(buttons)
-            keyboard.add(*row_buttons)
-            
-            
+            keyboard.add(*row_buttons)       
         return keyboard
     
 
@@ -58,25 +53,19 @@ class BotkeyBoard:
 
 
 # -------------------------PANEL MANAGEMENT----------------------------------------------------------------------------------------
-
+    
     @staticmethod
-    def panel_management_menu_in_admin_side() :
-
-        panel_ui_buttom = [[('➖ حذف کردن پنل ', 'remove_panel') , ('➕ اضافه کردن پنل' , 'add_panel')] ,
-                           [('🔩 مدیریت پنل ','manageing_panels')]
-                          ]
-        
+    def panel_management_menu_in_admin_side():
         keyboard = InlineKeyboardMarkup()
-
-        for i in panel_ui_buttom :
+        panel_ui_buttom = [[('➖ حذف کردن پنل ' , 'remove_panel') , ('➕ اضافه کردن پنل' , 'add_panel')] ,
+                           [('🔩 مدیریت پنل ','manageing_panels')] ,
+                           [('بازگشت به منوی قبلی ↪️' , 'back_from_panel_manageing')]]
+        for i in panel_ui_buttom:
             button_to_add = []
-
-            for text , data in i :
-                buttom = InlineKeyboardButton(text = text , callback_data = data)
+            for text , data in i:
+                buttom = InlineKeyboardButton(text=text , callback_data=data)
                 button_to_add.append(buttom)
             keyboard.add(*button_to_add)
-
-
         return keyboard
     
 
@@ -84,54 +73,52 @@ class BotkeyBoard:
 
 
     @staticmethod 
-    def panel_management_remove_panel():
-
-        remove_button_top_row = [[('حذف ' , 'remove_actions') , ('ادرس پنل' , 'panel_removal_url') , ('نام پنل ' , 'panel_removal_name')]
-                                 
-                                ]
-
+    def panel_management_remove_panel(id_panel:int=None ,kind=False):
         keyboard = InlineKeyboardMarkup()
+        keyboard_2 = InlineKeyboardMarkup()
         panel_ = v2panel.objects.all() 
+        remove_button_top_row = [[('حذف ' , 'remove_actions') , ('ادرس پنل' , 'panel_removal_url') , ('نام پنل ' , 'panel_removal_name')]]
 
-
-
-        for rows_top in remove_button_top_row :
+        for rows_top in remove_button_top_row:
                 top_row_buttons_list = []
-
-                for text , data in rows_top :
-                    top_row_buttons = InlineKeyboardButton(text = text , callback_data = data )
+                for text , data in rows_top:
+                    top_row_buttons = InlineKeyboardButton(text=text , callback_data=data )
                     top_row_buttons_list.append(top_row_buttons)
                 keyboard.add(*top_row_buttons_list)
 
-
         panels_to_list = []
-        if not panel_.exists() :
+        if not panel_.exists():
             return 'no_panel_to_remove'
         else : 
             for i in panel_:
-                call_back_data = str(i.id) + 'a'
-                panel_url_shows = re.sub(r'(http|https)://' , '' , i.panel_url)
-
-                three_tuple_row_list = [('❌' , call_back_data ) , 
-                                        (panel_url_shows , call_back_data) , 
-                                        (i.panel_name , call_back_data)
-                                    ]
-                
+                call_back_data=f'panel_remove_{i.id}'
+                panel_url_shows=re.sub(r'(http|https)://' , '' , i.panel_url)
+                three_tuple_row_list=[('❌' , call_back_data ) , (panel_url_shows , call_back_data) , (i.panel_name , call_back_data)]
                 panels_to_list.append(three_tuple_row_list)
-
-
             for rows_buttom in panels_to_list :
                 bottom_row_buttons_list = []
-
                 for text , data in rows_buttom :
-                    buttom_row_button = InlineKeyboardButton(text = text , callback_data = data )
+                    buttom_row_button = InlineKeyboardButton(text=text , callback_data=data)
                     bottom_row_buttons_list.append(buttom_row_button)
                 keyboard.add(*bottom_row_buttons_list)
 
             back_button_manage_panel = InlineKeyboardButton('بازگشت ↪️' , callback_data = 'back_to_manage_panel')
             keyboard.add(back_button_manage_panel)
 
-            return keyboard
+
+            which_to_remove =[[('حذف پنل و تمامی محصولات مرتبط', f'remove_products_panel_{id_panel}') , ('فقط حذف پنل ' , f'remove_only_panel_{id_panel}')] , 
+                              [('بازگشت ↪️' , 'back_to_remove_panel_section')]]
+            for i in which_to_remove:
+                which_to_remove_buttons=[]
+                for text , data in i :
+                    button=InlineKeyboardButton(text=text , callback_data=data)
+                    which_to_remove_buttons.append(button)
+                keyboard_2.add(*which_to_remove_buttons)
+
+            if kind is False :
+                return keyboard
+            else :
+                return keyboard_2
         
 
 
@@ -139,45 +126,37 @@ class BotkeyBoard:
 
     @staticmethod 
     def panel_management_manageing_panels():
-
-        manage_button_top_row = [[('مدیریت پنل' , 'manage_panel_') , ('وضعیت پنل' , 'panel_status') , ('نام پنل', 'panel_name')]
-                  ]
-        
         keyboard = InlineKeyboardMarkup()
         panel_ = v2panel.objects.all()
 
+        manage_button_top_row = [[('مدیریت پنل' , 'manage_panel_') , ('وضعیت پنل' , 'panel_status') , ('نام پنل', 'panel_name')]]
+        
         for i in manage_button_top_row:
             top_row_button_list = []
-
-            for text , data in i :
-                top_row_button = InlineKeyboardButton(text = text , callback_data = data)
+            for text , data in i:
+                top_row_button = InlineKeyboardButton(text=text , callback_data=data)
                 top_row_button_list.append(top_row_button)
             keyboard.add(*top_row_button_list)
         
-
-        panels_to_list = []
+        panels_to_list=[]
         if not panel_.exists() : 
             return 'no_panel_to_manage'
         else :
             for i in panel_:
-                panel_status_out = '🟢'  if i.panel_status == 1 else  '🔴'
-                panel_id = str(i.id) + 'aa'
-                manage_button_bottom_list = [('⚙️' , panel_id) , (panel_status_out , str(i.panel_status) ) , (i.panel_name , i.panel_name )]
+                panel_status_out='🟢'  if i.panel_status==1 else  '🔴'
+                panel_id=f'manageing_panel_{i.id}'
+                manage_button_bottom_list=[('⚙️' , panel_id) , (panel_status_out , panel_id ) , (i.panel_name , panel_id )]
                 panels_to_list.append(manage_button_bottom_list)
 
-
-            for i in panels_to_list :
-                bottom_row = []
-
-                for text , data in i :
-                    bottom_row_buttons = InlineKeyboardButton(text = text , callback_data = data )
+            for i in panels_to_list:
+                bottom_row=[]
+                for text , data in i:
+                    bottom_row_buttons=InlineKeyboardButton(text=text , callback_data=data )
                     bottom_row.append(bottom_row_buttons)
                 keyboard.add(*bottom_row)
 
             back_button = InlineKeyboardButton('بازگشت ↪️' , callback_data = 'back_to_manage_panel')   
             keyboard.add(back_button) 
-
-
 
             return keyboard
         
@@ -186,130 +165,92 @@ class BotkeyBoard:
 
 
     @staticmethod
-    def manage_selected_panel(id_panel_pk : int , passwd = False) :
-
+    def manage_selected_panel(panel_pk:int , passwd:bool=False , username:bool=False):
         keyboard = InlineKeyboardMarkup()
-        
-        for i in v2panel.objects.filter(id = id_panel_pk) :
+        for i in v2panel.objects.filter(id = panel_pk) :
+            panel_status_out= '🟢' if i.panel_status == 1 else  '🔴'
+            panel_reality_flow_out='None' if i.reality_flow=='' else i.reality_flow  
+            panel_url_shows=re.sub(r'(http|https)://' , '' , i.panel_url)
+            panel_username ='👁‍🗨👉🏻' if username==False else str(i.panel_username)  
+            panel_password='👁‍🗨👉🏻' if passwd==False else str(i.panel_password)   
 
-            panel_status_out =  '🟢'  if i.panel_status == 1 else  '🔴'
-            panel_reality_flow_out = 'None' if i.reality_flow == '' else i.reality_flow  
-            panel_url_shows = re.sub(r'(http|https)://' , '' , i.panel_url)
-            selected_panel_list = [
-                                [(str(panel_status_out) , 'panel_status_' + str(i.pk)) , ('وضعیت پنل' , 'panel_status') ] ,
-
-                                [(str(i.panel_name) , 'panel_name_' + str(i.pk)) , ('نام پنل ' , 'panel_name')] , 
-
-                                [(str(panel_url_shows) , 'panel_url_' + str(i.pk)) , ('ادرس پنل' , 'panel_url')] ,
-
-                                [(str(i.panel_username) , 'panel_username_'+ str(i.pk)) , ('یورزنیم پنل ' , 'panel_username')] ,
-
-                                [('tap to reveal👉🏻' if passwd == False else str(i.panel_password) , f'panel_password_{passwd}_' + str(i.pk)) , ('پسوورد پنل' , 'panel_password')] ,
-
-                                [(str(panel_reality_flow_out) , 'reality_flow_' + str(i.pk)) , ('reality-flow' , 'reality_flow')] ,
-                                        
-                                [('⚙️' , 'panel_capacity_' + str(i.pk)) , ('ظرفیت پنل' , 'panel_capacity')] ,                    
-                                   ]
+            selected_panel_list=[
+                                [(str(panel_status_out) , f'panel_status_{i.id}' ) , ('وضعیت پنل' , 'panel_status')] ,
+                                [(str(i.panel_name) , f'panel_name_{i.id}_{i.panel_name}') , ('نام پنل ' , 'panel_name')] , 
+                                [(str(panel_url_shows) , f'panel_url_{i.id}_{panel_url_shows}') , ('ادرس پنل' , 'panel_url')] ,
+                                [(panel_username, f'panel_username_{i.id}_{username}') , ('┐ یورزنیم پنل ' , f'view_username_{i.id}')] ,
+                                [(panel_password , f"panel_password_{i.id}_{passwd}") , ('┘ پسوورد پنل ' , f'view_password_{i.id}')] ,
+                                [(str(panel_reality_flow_out) , f'reality_flow_{i.id}') , ('reality-flow💡' , 'reality_flow')] ,
+                                [('⚙️' , f'panel_capacity_{i.id}') , ('🧮ظرفیت پنل ' , 'panel_capacity')]]
         
         buttons_management = []
-
-        for row in selected_panel_list :
-            
+        for row in selected_panel_list:
             for text , data in row :
-                button = InlineKeyboardButton(text = text ,callback_data = data)
+                button = InlineKeyboardButton(text=text , callback_data=data)
                 buttons_management.append(button)
-        keyboard.add(*buttons_management, row_width=2)
-        button1 = InlineKeyboardButton(text='نوع ارسال اشتراک' ,callback_data= 'how_to_send')
-        button2 = InlineKeyboardButton(text='نوع اینباند ها' , callback_data='inbounds_selector')
-        back_button = InlineKeyboardButton('بازگشت ↪️' , callback_data = 'back_to_manageing_panels')   
-        keyboard.add(button1 , button2 , back_button , row_width=1) 
+        keyboard.add(*buttons_management , row_width=2)
 
+        button1=InlineKeyboardButton(text='🔖نوع ارسال اشتراک ' , callback_data= f'send_config_{panel_pk}')
+        button2=InlineKeyboardButton(text='📊آمار پنل ' , callback_data=f'panel_statics_{panel_pk}')
+        back_button=InlineKeyboardButton('بازگشت ↪️' , callback_data='back_to_manageing_panels')   
+        keyboard.add(button1  ,button2 , back_button , row_width=1) 
 
         return keyboard
     
-
 
 
 
 
     @staticmethod
-    def changin_reality_flow() :
-
-        reality_flow_buttons = [[('xtls-rprx-vision','xtls-rprx-vision') , ('None','None')]
-                  ]
-        
-        keyboard = InlineKeyboardMarkup()
-
-        reality_flow_buttons_list = []
-
-        for i in reality_flow_buttons :
-            
-
-            for text , data in i :
-
-                buttons = InlineKeyboardButton(text = text , callback_data = data)
+    def changin_reality_flow():
+        keyboard=InlineKeyboardMarkup()
+        reality_flow_buttons=[[('xtls-rprx-vision' , 'xtls-rprx-vision') , ('None' , 'None_realityFlow')]]
+        reality_flow_buttons_list=[]
+        for i in reality_flow_buttons:
+            for text,data in i:
+                buttons=InlineKeyboardButton(text=text , callback_data=data)
                 reality_flow_buttons_list.append(buttons)
-
-        keyboard.add(*reality_flow_buttons_list , row_width = 2)
-
-
+        keyboard.add(*reality_flow_buttons_list , row_width=2)
+        
         return keyboard
-    
 
 
 
 
 
     @staticmethod 
-    def changin_panel_capcity(id_panel_pk) :
+    def changin_panel_capcity(panel_pk):
+        keyboard=InlineKeyboardMarkup()
+        #= capcity-mode 0 : باز \ capcity-mode 1 : بسته 
+        #= sale-mode 0 : بدون ظرفیت \ sale-mode : 1 ظرفیت نامحدود \ sale-mode : 2 دارای ظرفیت
 
-        keyboard = InlineKeyboardMarkup()
-
-        for i in  v2panel.objects.filter(id = id_panel_pk) : 
-
-            if i.capcity_mode == 0 :
-                capcity_mode = 'بدون ظرفیت'   
-
-            elif i.capcity_mode == 1 :
-                capcity_mode = 'دارای ظرفیت'
-
+        for i in  v2panel.objects.filter(id=panel_pk): 
+            if i.capcity_mode==0:
+                capcity_mode='بدون ظرفیت'   
+            elif i.capcity_mode==1:
+                capcity_mode='دارای ظرفیت'
             else:
-                capcity_mode = 'ظرفیت نامحدود'            
+                capcity_mode='ظرفیت نامحدود'            
 
-            if i.panel_sale_mode == 0: 
-                sale_mode = 'بسته'
+            if i.panel_sale_mode==0: 
+                sale_mode='بسته'
+            elif i.panel_sale_mode==1:
+                sale_mode='باز'
 
-            elif i.panel_sale_mode == 1 :
-                sale_mode = 'باز'
-
-            else :
-                sale_mode = 'براساس نوع ظرفیت'
-
-            remaing_capacity = (int(i.all_capcity) - int(i.sold_capcity)) if i.all_capcity > 0 else 0
-
-
-            panel_capcity_buttons = [
-                                        [(capcity_mode , 'capcity_mode') , ('نوع ظرفیت' , 'capcity_mode')] ,
-
-                                        [(sale_mode , 'sale_mode') , (' حالت فروش ' , 'sale_mode')] ,
-
-                                        [(abs(i.all_capcity) , 'all_capcity') , ('ظرفیت کلی' , 'all_capcity')] ,
-
-                                        [(abs(i.sold_capcity) , 'sold_capcity') , ('ظرفیت فروش رفته' , 'sold_capcity')],
-
-                                        [(abs(remaing_capacity) , 'remaining_capcity') , ('ظرفیت باقی مانده' , 'remaining_capcity')] ,
-
-                                        [('بازگشت ↪️' , 'back_from_panel_capcity_list')]
-                                    ]
+            remaing_capacity=(int(i.all_capcity) - int(i.sold_capcity)) if i.all_capcity > 0 else 0
+            panel_capcity_buttons=[[(capcity_mode , 'capcity_mode') , ('🎚نوع ظرفیت ' , 'capcity_mode')] ,
+                                    [(sale_mode , 'sale_mode') , ('💸حالت فروش' , 'sale_mode')] ,
+                                    [(f"{abs(i.all_capcity)} عدد" , f'all_capcity_{i.all_capcity}') , ('🔋ظرفیت کلی' , f'all_capcity_{i.all_capcity}')] ,
+                                    [(f"{abs(i.sold_capcity)} عدد" , 'sold_capcity') , ('💰ظرفیت فروش رفته' , 'sold_capcity')],
+                                    [(f"{abs(remaing_capacity)} عدد" , 'remaining_capcity') , ('⏳ظرفیت باقی مانده ' , 'remaining_capcity')] ,
+                                    [('بازگشت ↪️' , 'back_from_panel_capcity_list')]]
         
-
-        for row in panel_capcity_buttons :
-            buttons_to_list = []
-            for text, callback_data in row :
-                button = InlineKeyboardButton(text = text , callback_data = callback_data)
+        for row in panel_capcity_buttons:
+            buttons_to_list=[]
+            for text, callback_data in row:
+                button = InlineKeyboardButton(text=text , callback_data=callback_data)
                 buttons_to_list.append(button)
             keyboard.add(*buttons_to_list)
-
 
         return keyboard
 
@@ -318,51 +259,48 @@ class BotkeyBoard:
 
 
     @staticmethod
-    def how_to_send_links(id_panel_pk):
-        keyboard = InlineKeyboardMarkup()
-        panel_ = v2panel.objects.filter(id=id_panel_pk)
+    def how_to_send_links(panel_pk):
+        keyboard=InlineKeyboardMarkup()
+        panel_=v2panel.objects.filter(id=panel_pk)
         for i in panel_:
-
-            if i.send_links_mode == 0:
+            if i.send_links_mode==0:
                 send_link = 'عدم ارسال'
-            elif i.send_links_mode == 1:
+            elif i.send_links_mode==1:
                 send_link = 'لینک هوشمند'
-            else :
-                send_link = 'لینک کانفیگ'
-
-            if i.send_qrcode_mode == 0:
-                send_qrcode = 'عدم ارسال'
-            elif i.send_qrcode_mode == 1:
-                send_qrcode = 'لینک هوشمند'
             else:
-                send_qrcode = 'لینک کانفیگ'
+                send_link='لینک کانفیگ'
 
-            buttons = [
-                [('Qrcode نوع ارسال' , 'qrcode_sending_kind') , ('نوع لینک ارسالی' ,'link_sending_kind')],
-                [(send_qrcode , 'qrcode_sending') , (send_link , 'link_sending')]
-            ]
+            if i.send_qrcode_mode==0:
+                send_qrcode='عدم ارسال'
+            elif i.send_qrcode_mode==1:
+                send_qrcode='لینک هوشمند'
+            else:
+                send_qrcode='لینک کانفیگ'
 
-
-        for i in buttons :
-            buttons_list = []
+            buttons = [[('Qrcode نوع ارسال' , 'qrcode_sending_kind') , ('نوع لینک ارسالی' ,'link_sending_kind')] ,
+                        [(send_qrcode , 'qrcode_sending') , (send_link , 'link_sending')]]
+        for i in buttons:
+            buttons_list=[]
             for text , data in i:
                 button = InlineKeyboardButton(text=text , callback_data=data)
                 buttons_list.append(button)
             keyboard.add(*buttons_list)
 
-        back_button = InlineKeyboardButton(text = 'بازگشت ↪️' ,  callback_data='back_from_panel_howtosend_list')    
+        back_button = InlineKeyboardButton(text ='بازگشت ↪️' ,  callback_data='back_from_panel_howtosend_list')    
         keyboard.add(back_button)
         
         return keyboard
     
 
 
+
+    """
     @staticmethod 
     def select_inbounds(inbound_selected : any = None):
         keyboard = InlineKeyboardMarkup(row_width= 1)
     
 
-
+        #button2=InlineKeyboardButton(text='نوع اینباند ها' , callback_data=f'inbounds_selector_{panel_pk}')
         buttons_list = []
 
         if inbound_selected is not None:
@@ -377,7 +315,7 @@ class BotkeyBoard:
 
 
         return keyboard 
-        
+        """
 
 
 
