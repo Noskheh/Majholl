@@ -42,25 +42,20 @@ class admins(models.Model):
 
 class v2panel(models.Model):
 
+    panel_status = models.SmallIntegerField(default=1 , null=False)
     panel_name = models.CharField(max_length = 256 , blank = False)
     panel_url = models.CharField(max_length= 256 , blank = False)
     panel_username = models.CharField(max_length=256 , null=False)
     panel_password = models.CharField(max_length=256 , null= False)
     panel_id_str = models.CharField(max_length=36 , null= True , blank=True)
     reality_flow = models.CharField(max_length=256, null=True)
-    panel_status = models.SmallIntegerField(default=1 , null=False)
-
-    #-1 added 
     capcity_mode = models.PositiveSmallIntegerField(default= 2 , null=False)
+    all_capcity = models.BigIntegerField(default= 0 , blank= True , null= True)
     sold_capcity = models.BigIntegerField(default= 0 ,blank= True , null= True)
     panel_sale_mode = models.PositiveSmallIntegerField(default= 1 , null=False)
     send_links_mode = models.PositiveSmallIntegerField(default=0 , null=False)
     send_qrcode_mode = models.PositiveSmallIntegerField(default= 0 , null=False)
-    inbounds_selected = models.JSONField(default=None , blank=True , null= True)
-
-    #-2 changed
-    all_capcity = models.BigIntegerField(default= 0 , blank= True , null= True)
-    
+        
     def __str__(self):
         return f'panel name :{self.panel_name }  panel url : {self.panel_url}'
     
@@ -72,7 +67,7 @@ class v2panel(models.Model):
 
 
 class products(models.Model):
-    #- change product_name max lenght
+    product_status = models.SmallIntegerField(default=1 , null=False)
     product_name = models.CharField(max_length=128)
     data_limit = models.DecimalField(max_digits=12 , decimal_places=2 )
     expire_date = models.SmallIntegerField()
@@ -81,7 +76,7 @@ class products(models.Model):
     categori_id = models.SmallIntegerField(null=True, blank=True)
     pro_id_str = models.CharField(max_length=36 , null=True , blank=True)
     sort_id = models.SmallIntegerField(null=True , blank=True)
-
+    inbounds_selected = models.JSONField(default=None , blank=True , null= True)
     class Meta :
         db_table = 'TeleBot_products'
 

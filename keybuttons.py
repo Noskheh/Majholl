@@ -294,56 +294,68 @@ class BotkeyBoard:
 
 
 
-    """
-    @staticmethod 
-    def select_inbounds(inbound_selected : any = None):
-        keyboard = InlineKeyboardMarkup(row_width= 1)
-    
-
-        #button2=InlineKeyboardButton(text='نوع اینباند ها' , callback_data=f'inbounds_selector_{panel_pk}')
-        buttons_list = []
-
-        if inbound_selected is not None:
-            for i in inbound_selected:
-                button = InlineKeyboardButton(text= i  , callback_data= i)
-                buttons_list.append(button)
-        keyboard.add(*buttons_list)
-
-        done_buttons = InlineKeyboardButton('اتمام ' , callback_data='done_inbounds')
-        back_buttons = InlineKeyboardButton('بازگشت' , callback_data='back_from_inbounds_selecting')
-        keyboard.add(done_buttons , back_buttons)
-
-
-        return keyboard 
-        """
-
-
-
 
 # -------------------------PRODUCTS MANAGEMENT----------------------------------------------------------------------------------------
 
 
     @staticmethod
-    def product_management_menu_in_admin_side() :
-
-        keyboard = InlineKeyboardMarkup()
-
+    def product_management_menu_in_admin_side():
+        keyboard =InlineKeyboardMarkup()
         product_ui_buttom = [[('➖حذف کردن محصول ' , 'remove_product') , ('➕اضافه کردن محصول ' , 'add_product' )] ,
-                             [('🔩مدیریت محصولات '  , 'manage_products')]
-
-                            ]
-        
-        for i in product_ui_buttom : 
-            product_ui_buttom_list = []
-            for text , data in i :
-                buttom = InlineKeyboardButton(text = text , callback_data = data)
+                            [('🔩مدیریت محصولات '  , 'manage_products')] ,
+                            [('بازگشت به منوی قبلی ↪️' , 'back_from_products_manageing' )] ]
+        for i in product_ui_buttom: 
+            product_ui_buttom_list=[]
+            for text , data in i:
+                buttom = InlineKeyboardButton(text=text , callback_data=data)
                 product_ui_buttom_list.append(buttom)
-
             keyboard.add(*product_ui_buttom_list)
-
-
         return keyboard
     
+
+    @staticmethod
+    def load_panel_add_product(add_product=False , remove_product=False , manage_product=False):
+        panel_=v2panel.objects.all()
+        keyboard=InlineKeyboardMarkup()
+        if not panel_.exists():
+            return "no_panel_to_load"
+        else:
+            call_data = ''
+            if add_product is not False and remove_product is False and manage_product is False:
+                call_data = "panel_product_"
+            elif remove_product is not False and add_product is False and manage_product is False:
+                call_data = "remove_panel_product_"
+            elif manage_product is not False and add_product is False and remove_product is False:
+                call_data = 'managing_panel_product_'
+
+            for i in panel_:
+                buttons=InlineKeyboardButton(text=i.panel_name , callback_data = f'{call_data}{i.id}')
+                keyboard.add(buttons)
+            back_button_add = InlineKeyboardButton(text = 'بازگشت ↪️'  , callback_data = f'back_{call_data}')
+            keyboard.add(back_button_add)
+            return keyboard
+           
+    
+
+    @staticmethod 
+    def select_inbounds(inbound_selected:any=None):
+        keyboard=InlineKeyboardMarkup(row_width=1)
+        buttons_list=[]
+        if inbound_selected is not None:
+            for i in inbound_selected:
+                button = InlineKeyboardButton(text=i  , callback_data=i)
+                buttons_list.append(button)
+        keyboard.add(*buttons_list)
+        done_buttons = InlineKeyboardButton('اتمام و ذخیره محصول 🧷' , callback_data='done_inbounds')
+        back_buttons = InlineKeyboardButton(' بازگشت و لغو ثبت محصول ↪️ ' , callback_data='back_from_inbounds_selecting')
+        keyboard.add(done_buttons , back_buttons)
+        return keyboard 
+        
+
+
+
+
+
 
 
 
@@ -353,88 +365,50 @@ class BotkeyBoard:
 
 
     @staticmethod 
-    def product_managemet_remove_products(panel_pk , page : int = 1 , item_peer_page : int = 8) :
-
-        top_row = [[('حذف' , 'remove_actions') , ('نام پنل ' , 'panel_related_name') , ('آدرس پنل' , 'related_panel_url') , ('نام محصول' , 'product_removal_name')]
-                  ]
-        
-        keyboard  = InlineKeyboardMarkup()
-
-        for i in top_row :
-            top_row_buttons_list = []
-
-            for text , data in i :
-                top_row_button = InlineKeyboardButton( text  = text , callback_data = data)
+    def product_managemet_remove_products(panel_pk , page:int=1 , item_peer_page:int=8) :
+        keyboard=InlineKeyboardMarkup()
+        product_=products.objects.filter(panel_id=panel_pk)
+        top_row=[[('حذف' , 'remove_actions') , ('آدرس پنل' , 'related_panel_url') , ('نام محصول' , 'product_removal_name')]]        
+        for i in top_row:
+            top_row_buttons_list=[]
+            for text , data in i:
+                top_row_button=InlineKeyboardButton(text=text , callback_data=data)
                 top_row_buttons_list.append(top_row_button)
-
-            keyboard.add(*top_row_buttons_list ,row_width = 4)
-
-
-        products_list = []
-
-        start_index = (page - 1) * item_peer_page
-        end_index = (page - 1 ) * item_peer_page + item_peer_page
-        
-        product_ = products.objects.filter(panel_id = panel_pk)
-
-        count_products = []
+            keyboard.add(*top_row_buttons_list , row_width=4)
+        products_list=[]
+        start_index=(page-1) * item_peer_page
+        end_index=(page-1) * item_peer_page + item_peer_page
+        count_products=[]
         if not product_.exists():
             return 'no_products_to_remove'
-        
-        else :
-
+        else:
             for i , product in enumerate(product_) : 
                 count_products.append(i)
                 if  start_index < i+1 <= end_index:
-                    
-
-                    for x in v2panel.objects.filter(id = product.panel_id) :
-                        panelname = x.panel_name 
-                        panelurl = re.sub(r'(http|https)://' , '' ,  x.panel_url)
-
-                    product_id = str(product.id) + 'b'
-                    products_list_bottom_tuple_list = [('❌' , product_id) , (panelname , panelname) , (panelurl , panelurl) , (product.product_name , product.product_name)]
+                    for x in v2panel.objects.filter(id=product.panel_id) :
+                        panelurl=re.sub(r'(http|https)://' , '' ,  x.panel_url)
+                    product_id=f'delete_prodcut_{product.id}'
+                    products_list_bottom_tuple_list = [('❌' , product_id) , (panelurl , product_id) , (product.product_name , product_id)]
                     products_list.append(products_list_bottom_tuple_list)
 
-        
-        
-        
-        
-        for i in products_list :
-            
-                bottom_row_buttons_list = []
-
-                for text , data in i :
-                    bottom_row_button = InlineKeyboardButton( text = text , callback_data = data)
+        for i in products_list:
+                bottom_row_buttons_list=[]
+                for text , data in i:
+                    bottom_row_button=InlineKeyboardButton(text =text , callback_data=data)
                     bottom_row_buttons_list.append(bottom_row_button)
-                
-
-                keyboard.add(*bottom_row_buttons_list , row_width = 4)
-
-
-        next_prev_buttons = [InlineKeyboardButton(text= 'صفحه بعدی ⏪' , callback_data = f'next_page_products_{page +1}') , 
-                             InlineKeyboardButton(text= 'صفحه قبل ⏩' , callback_data = f'prev_page_products_{page - 1}')
-                            ]
-        
-        if page <= 1 :
+                keyboard.add(*bottom_row_buttons_list , row_width=3)
+        next_prev_buttons = [InlineKeyboardButton(text='صفحه بعدی ⏪' , callback_data = f'remove_next_page_products_{page +1}') , 
+                             InlineKeyboardButton(text='صفحه قبل ⏩' , callback_data = f'remove_prev_page_products_{page - 1}')]
+        if page <= 1:
             if len(count_products) > item_peer_page:
                 keyboard.add(next_prev_buttons[0])
-            if len(count_products)  < item_peer_page :
-                pass
-
-
-        if page > 1 and len(products_list) == item_peer_page: 
+        if page > 1 and len(products_list)==item_peer_page: 
                 keyboard.add(next_prev_buttons[0] , next_prev_buttons[1])
-                
-
         elif page > 1 and len(products_list) < item_peer_page :    
                 keyboard.add(next_prev_buttons[1])
-#//TODO fix page bug
-
-        back_button = InlineKeyboardButton(text = 'بازگشت ↪️' ,  callback_data = 'back_from_remove_products')  
+        #//TODO fix page bug
+        back_button=InlineKeyboardButton(text ='بازگشت ↪️' , callback_data='back_from_remove_products')  
         keyboard.add( back_button , row_width = 1)
-
-
         return keyboard
 
 
@@ -451,161 +425,116 @@ class BotkeyBoard:
 
 
     @staticmethod
-    def products_list(panel_pk , up : int = None , down : int = None , page : int = 1 , item_peer_page : int = 10):
-        
-        keyboard = InlineKeyboardMarkup()
-
-        top_row = [[ ('پایین' , 'down') , ('بالا' ,'up') , ('محصول' , 'product'), ('ردیف' , 'row') ]
-                   ]
-        for i in top_row :
-            top_buttons_list = []
+    def products_list(panel_pk , up:int=None , down:int=None , page:int=1 , item_peer_page:int=10):
+        keyboard=InlineKeyboardMarkup()
+        top_row = [[('🔻پایین' , 'down') , ('🔺بالا' , 'up') , ('محصول' , 'product')]]
+        for i in top_row:
+            top_buttons_list=[]
             for text , data in i:
-                button = InlineKeyboardButton(text = text , callback_data = data)
+                button = InlineKeyboardButton(text=text , callback_data=data)
                 top_buttons_list.append(button)
-            keyboard.add(*top_buttons_list ,row_width = 4)
+            keyboard.add(*top_buttons_list ,row_width=3)
 
 
-
-        bottom_row_list = []
-        
-        filtered_products = products.objects.filter(panel_id=panel_pk).order_by('sort_id')
-        sorted_filtered_list = [(prod.sort_id, prod.id) for prod in filtered_products]
-        
-        
-        if up is not None :
-            
+        bottom_row_list=[]
+        filtered_products=products.objects.filter(panel_id=panel_pk).order_by('sort_id')
+        sorted_filtered_list=[(prod.sort_id, prod.id) for prod in filtered_products]
+        if up is not None:
             for pro_sortId , pro_id in sorted_filtered_list:
-                if pro_id == sorted_filtered_list[up-1][1]:
-                    
-                    
-                    before_sort_id = sorted_filtered_list[up-2][0]
-                    after_sort_id = sorted_filtered_list[up-1][0]
-                    try :
-                        product = products.objects.get(id = sorted_filtered_list[up-1][1])
+                if pro_id==sorted_filtered_list[up - 1][1]:
+                    before_sort_id=sorted_filtered_list[up - 2][0]
+                    after_sort_id=sorted_filtered_list[up - 1][0]
+                    try:
+                        product=products.objects.get(id=sorted_filtered_list[up - 1][1])
                         new_sort_id = before_sort_id 
                         product.sort_id = new_sort_id
                         product.save()
-
-                        product2 = products.objects.get(id = sorted_filtered_list[up-2][1])
-                        new_sort_id_2 = after_sort_id
-                        product2.sort_id = new_sort_id_2
+                        product2 = products.objects.get(id=sorted_filtered_list[up - 2][1])
+                        new_sort_id_2=after_sort_id
+                        product2.sort_id=new_sort_id_2
                         product2.save()
-                        
-                    except Exception as e:
-                        print(f'something wentwrong \\\ up section-1 \\\:{e}')
-
-
-
-
-        if down is not None :
-            
+                    except Exception as up_error:
+                        print(f'something wentwrong \\\ up section-1 \\\:{up_error}')
+        if down is not None:
             for pro_sortId , pro_id in sorted_filtered_list:
-                if pro_id == sorted_filtered_list[down-1][1]:
-                    
-                    if down <= len(sorted_filtered_list) - 1  : 
-                        before_sort_id = sorted_filtered_list[down-1][0]
-                        after_sort_id = sorted_filtered_list[down][0]
+                if pro_id==sorted_filtered_list[down - 1][1]:      
+                    if down<=len(sorted_filtered_list) - 1: 
+                        before_sort_id=sorted_filtered_list[down - 1][0]
+                        after_sort_id=sorted_filtered_list[down][0]
+                        try:
+                            productـmain=products.objects.get(id=sorted_filtered_list[down - 1][1])
+                            new_sort_id=after_sort_id 
+                            productـmain.sort_id=new_sort_id
+                            productـmain.save()
+                            product2 = products.objects.get(id=sorted_filtered_list[down][1])
+                            new_sort_id_2=before_sort_id
+                            product2.sort_id=new_sort_id_2
+                            product2.save() 
+                        except Exception as down_error_1:
+                            print(f'something wentwrong \\\ down seciotn-1 \\\ :{down_error_1}')     
+                    elif down>=len(sorted_filtered_list)-1:
+                        before_sort_id = sorted_filtered_list[down - 1][0]
+                        after_sort_id = sorted_filtered_list[down - down][0]
                         try :
-                            productـmain = products.objects.get(id = sorted_filtered_list[down-1][1])
-                            new_sort_id = after_sort_id 
-                            productـmain.sort_id = new_sort_id
+                            productـmain=products.objects.get(id=sorted_filtered_list[down - 1][1])
+                            new_sort_id=after_sort_id 
+                            productـmain.sort_id=new_sort_id
                             productـmain.save()
 
-                            product2 = products.objects.get(id = sorted_filtered_list[down][1])
-                            new_sort_id_2 = before_sort_id
-                            product2.sort_id = new_sort_id_2
-                            product2.save()
-                            
-                        except Exception as e:
-                            print(f'something wentwrong \\\ down seciotn-1 \\\ :{e}')
-                            
-                    elif down >= len(sorted_filtered_list) - 1 :
-
-                        before_sort_id = sorted_filtered_list[down- 1][0]
-                        after_sort_id = sorted_filtered_list[down - down ][0]
-                        try :
-                            productـmain = products.objects.get(id = sorted_filtered_list[down-1][1])
-                            new_sort_id = after_sort_id 
-                            productـmain.sort_id = new_sort_id
-                            productـmain.save()
-
-                            product2 = products.objects.get(id = sorted_filtered_list[down - down][1])
-                            new_sort_id_2 = before_sort_id
-                            product2.sort_id = new_sort_id_2
-                            product2.save()
-                            
-                        except Exception as e:
-                            print(f'something wentwrong \\\ down section-2 \\\ :{e}')
-
-
-
+                            product2=products.objects.get(id=sorted_filtered_list[down - down][1])
+                            new_sort_id_2=before_sort_id
+                            product2.sort_id=new_sort_id_2
+                            product2.save()   
+                        except Exception as down_error_2:
+                            print(f'something wentwrong \\\ down section-2 \\\ :{down_error_2}')
 
         start_index = (page - 1) * item_peer_page
-        end_index = (page -1 ) * item_peer_page + item_peer_page
+        end_index = (page - 1 ) * item_peer_page + item_peer_page
         all_products_num = []
         
         if not filtered_products.exists():
             return 'no_product_to_manage'
-        
-        else :
+        else:
             for num , (sort_id, produ_id) in enumerate(sorted_filtered_list):
                 all_products_num.append(num)
-
-                if start_index < num+1 <= end_index : 
-                    product = products.objects.get(id=produ_id)
-                    num = num + 1 
-                    
-                    bottom_row = [
-                                    ('👇🏻', f'down_{num}'),
-                                    ('👆🏻', f'up_{num}'),
-                                    (product.product_name, 'detaling_product_' + str(product.id)),
-                                    (num, 'row')
-                                ]
+                if start_index < num+1 <=end_index : 
+                    product=products.objects.get(id=produ_id)
+                    num=num+1 
+                    bottom_row = [('👇🏻' , f'down_{num}') ,
+                                ('👆🏻' , f'up_{num}') ,
+                                (product.product_name , f'detaling_product_{product.id}')]
                     bottom_row_list.append(bottom_row)
 
-
-
-
         for row in bottom_row_list:
-            bottoms_list_unpack = []
+            bottoms_list_unpack=[]
             for text , data in row:
-                button = InlineKeyboardButton(text = text , callback_data =  data)
+                button = InlineKeyboardButton(text=text , callback_data=data)
                 bottoms_list_unpack.append(button)
 
-            keyboard.add(*bottoms_list_unpack , row_width = 5)
-        
-        
-        
-        next_prev_buttons = [InlineKeyboardButton(text= 'صفحه بعدی ⏪' , callback_data = f'product_next_page_products_{page +1}') , 
-                             InlineKeyboardButton(text= 'صفحه قبل ⏩' , callback_data = f'product_prev_page_products_{page - 1}')
-                            ]
-        
-        if page <=1 :
-            if len(all_products_num) <= item_peer_page:
+            keyboard.add(*bottoms_list_unpack , row_width =3)
+
+        next_prev_buttons =[InlineKeyboardButton(text='صفحه بعدی ⏪' , callback_data =f'product_next_page_products_{page +1}') , 
+                             InlineKeyboardButton(text='صفحه قبل ⏩' , callback_data =f'product_prev_page_products_{page - 1}')]
+        if page <=1:
+            if len(all_products_num)<=item_peer_page:
                 pass 
             if len(all_products_num) > item_peer_page :
                 keyboard.add(next_prev_buttons[0])
-            
 
-
-        if page > 1 and len(bottom_row_list) == item_peer_page: 
-                keyboard.add(next_prev_buttons[0] , next_prev_buttons[1])
-                
+        if page > 1 and len(bottom_row_list)==item_peer_page: 
+                keyboard.add(next_prev_buttons[0] , next_prev_buttons[1])  
 
         elif page > 1 and len(bottom_row_list) < item_peer_page :    
                 keyboard.add(next_prev_buttons[1])
-
-
-
-
-
-
         back_button = InlineKeyboardButton(text = 'بازگشت ↪️' ,  callback_data = 'back_from_manage_products_list_updown')  
         keyboard.add( back_button , row_width = 1)
 
-
-
         return keyboard
+
+
+
+
+
 
 
 
@@ -617,20 +546,14 @@ class BotkeyBoard:
         for i in products.objects.filter(id = int(product_id)):
             data_limit_str = str(i.data_limit) if i.data_limit else 'N/A'
             pro_cost = format(i.pro_cost , ',')
-            buttons = [
-                        [(i.product_name  , '_product_name_' + str(i.id)) , ('نام محصول' , 'product_name_')], 
-
-                        [(data_limit_str + ' گیگ ', '_data_limit_' + str(i.id)) , ('حجم محصول' , 'data_limit_')] ,
-
-                        [(str(i.expire_date) + ' روز ', 'ـexpire_date_' + str(i.id)) , ('مدت زمان ' , 'expire_date_')] ,
-
-                        [(pro_cost + ' تومان ' , '_pro_cost_' + str(i.id)) , ('قیمت محمصول' , 'pro_cost_')] , 
-
-                      ]
+            product_status='🟢' if i.product_status else '🔴'
+            buttons = [[(product_status , f'_pr_status_{i.id}') , ('وضعیت محصول ' , f'_pr_status_{i.id}') ] ,
+                       [(i.product_name  , f"_product_name_{i.id}" ) , ('📝نام محصول' , f"_product_name_{i.id}")], 
+                       [(data_limit_str + ' گیگ ', f'_data_limit_{i.id}') , ('🔋حجم محصول' , f'_data_limit_{i.id}')] ,
+                       [(str(i.expire_date) + ' روز ', f'ـexpire_date_{i.id}') , ('⏳مدت زمان ' , f'ـexpire_date_{i.id}')] ,
+                       [(pro_cost + ' تومان ' , f'_pro_cost_{i.id}') , ('💸قیمت محمصول' , f'_pro_cost_{i.id}')],
+                       [('📡اینباند های محصول' , f'_inbounds_product_{i.id}')]]
             
-
-        
-        
         for  i , rows in enumerate(buttons) :
             buttons_list = []
             for text , data in rows :
@@ -646,7 +569,19 @@ class BotkeyBoard:
 
         return keyboard
 
-
+    @staticmethod 
+    def change_inbounds(inbound_selected:any=None):
+        keyboard=InlineKeyboardMarkup(row_width=1)
+        buttons_list=[]
+        if inbound_selected is not None:
+            for i in inbound_selected:
+                button = InlineKeyboardButton(text=i  , callback_data=i)
+                buttons_list.append(button)
+        keyboard.add(*buttons_list)
+        done_buttons = InlineKeyboardButton('اتمام و ذخیره 🧷' , callback_data='change_inbound_done')
+        back_buttons = InlineKeyboardButton('بازگشت و لغو ↪️' , callback_data='back_from_inbounds_chaging')
+        keyboard.add(done_buttons , back_buttons)
+        return keyboard 
 
 # -------------------------BUY SECTION----------------------------------------------------------------------------------------
 

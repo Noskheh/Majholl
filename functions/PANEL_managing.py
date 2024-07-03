@@ -63,7 +63,7 @@ def remove_panel_database(panel_id , BOT , call ,panel=None , product=None ):
 
 
 
-# Manageing Panel Status from Database
+# Manageing Panel from Database
 #- panel_STATUS
 def change_panel_status(panel_id , BOT , call):
         try :

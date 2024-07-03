@@ -5,6 +5,7 @@ from keybuttons import BotkeyBoard as BotKb
 import string , random , re , decimal , json 
 from functions.USERS_checker import *
 from functions.PANEL_managing import *
+from functions.PRODUCTS_managing import *
 from functions.BUY_services import * 
 from functions.checker_ import *
 from tools import QRcode_maker
@@ -34,9 +35,9 @@ def start_bot(message) :
     if CHECK_USER_CHANNEL(UserId=user_.id , Bot=bot) == True :
         #- Canceling operations : panels , product
         PANEL_RECEIVING_STATE['Enable_Panel_Adding'] = False
-        product_reciving_state['enable_product_adding'] = False
+        PRODUCT_RECEIVING_STATE['enable_product_adding'] = False
         CHANGING_PANEL_DETAILS.update({key : False for key in CHANGING_PANEL_DETAILS})
-        changing_product_details['enable_changing_product_deatails'] = False
+        CHNAGING_PRODUCT_DETAILS['Enable_Changing_Product_Deatails'] = False
 
         bot.send_message(message.chat.id , ' \ خوش امدید \ ' , reply_markup= BotKb.main_menu_in_user_side(message.from_user.id))
 
@@ -621,7 +622,7 @@ def handle_incoming_panelName(message):
             Text_2='✅.اسم پنل دریافت شد\n\n .ادرس پنل را ارسال کنید \n فرمت های صحیح :\nhttp://panelurl.com:port\nhttps://panelurl.com:port\nhttp://ip:port\nhttps://ip:port\n\nTO CANCEL : /CANCEL'
             bot.send_message(message.chat.id , Text_2)            
         else:
-            Text_3='❌.اسم پنل نباید بیشتر از 124 حروف باشد'
+            Text_3='❌.اسم پنل نباید بیشتر از 124 حروف باشد\n\nTO CANCEL : /CANCEL'
             bot.send_message(message.chat.id , Text_3)
 
 
@@ -918,769 +919,477 @@ def CHANGING_PANEL_DETAILS_capicty(call) :
 # --------------------------------------------------------------------------------------------------------------------------------#
 
 
-#> ./management > product 
-@bot.callback_query_handler(func = lambda call : call.data == 'products_management' or call.data == 'add_product' or call.data == 'remove_product' or call.data == 'manage_products')
+#> ./Management > Product 
+@bot.callback_query_handler(func=lambda call:call.data in [ 'products_management' , 'add_product' , 'remove_product' , 'manage_products' , 'back_from_products_manageing'])
 def handle_products(call) :
 
-    panel_ =  v2panel.objects.all()
-    if call.data == 'products_management' :
-        bot.send_message(call.message.chat.id , 
-                        text ='you \'re managing products !!' ,
-                        reply_markup = BotKb.product_management_menu_in_admin_side()
-                        )
+    panel_=v2panel.objects.all()
+    Text_0='هیچ پنلی برای لود کردن وجود ندارد \n\n اولین پنل خود را اضافه کنید :/add_panel'
+
+    if call.data=='products_management':
+        Text_1='✏️شما در حال مدیریت کردن بخش محصولات میباشید'
+        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.product_management_menu_in_admin_side())
+
+
+    if call.data=='back_from_products_manageing':
+        Text_2='به مدیریت ربات خوش امدید'
+        bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.management_menu_in_admin_side())
 
 
     #- Adding products 
-    if call.data == 'add_product' :
-        keyboard_add = InlineKeyboardMarkup()
-        if not panel_.exists() :
-
-            bot.send_message(call.message.chat.id ,
-                            'no panel exists to add'
-                            )
-        else :
-
-            for i in panel_ :
-                buttons = InlineKeyboardButton(text = i.panel_name , callback_data = 'add_product_' + str(i.id))
-                keyboard_add.add(buttons)
-
-            back_button_add = InlineKeyboardButton(text = 'بازگشت ↪️'  , callback_data = 'back_from_chooing_panel_to_add_product')
-            keyboard_add.add(back_button_add)
-
-            product_reciving_state.update({key : False for key in product_reciving_state if key  != 'enable_product_adding' })
-
-            bot.send_message(call.message.chat.id ,
-                            text='Select wich panel do you want to add product?' ,
-                            reply_markup = keyboard_add
-                            )
+    if call.data=='add_product':
+        no_panel=BotKb.load_panel_add_product()
+        if no_panel=='no_panel_to_load':
+            bot.send_message(call.message.chat.id , Text_2)
+        else:
+            Text_3='📌یک پنل را برای اضافه کردن محصول به آن انتخاب کنید \n\n⚠️محصول زیر مجموعه پنل خواهد بود '
+            bot.edit_message_text(Text_3 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.load_panel_add_product(add_product=True))
             
 
 
     #- Removing products
     if call.data == 'remove_product' :
-
-        keyboard_remove = InlineKeyboardMarkup()
-        if not panel_.exists() :
-            bot.send_message(call.message.chat.id , 'no panel exists to remove')
-        else :
-            for i in  panel_:
-                buttons = InlineKeyboardButton(text = i.panel_name , callback_data ='remove_product_' + str( i.id))
-                keyboard_remove.add(buttons)
-
-            back_button_remove = InlineKeyboardButton(text = 'بازگشت ↪️'  , callback_data = 'back_from_chooing_panel_to_remove_product')
-            keyboard_remove.add(back_button_remove)
-
-            bot.send_message(call.message.chat.id ,
-                            text = 'which panel do you want  ? \n\n tap to choose' ,
-                            reply_markup = keyboard_remove
-                            )
-        
-
-    
-
-    if call.data == 'manage_products' :
-        keyboard_manage = InlineKeyboardMarkup()
-        if not panel_.exists():
-            bot.send_message(call.message.chat.id , 'no panel exists to manage')
-        else :
-            for i in panel_:
-                buttons = InlineKeyboardButton(text= i.panel_name , callback_data = 'manage_product_' + str(i.id))
-                keyboard_manage.add(buttons)
-
-            back_button_manage = InlineKeyboardButton(text = 'بازگشت ↪️' , callback_data = 'back_from_chooing_panel_to_manage_product')
-            keyboard_manage.add(back_button_manage)
-
-            bot.send_message(call.message.chat.id , 
-                            'which panel do you want  ? \n\n tap to choose' , 
-                            reply_markup = keyboard_manage
-                            )
-
-
-
-
-
-product_reciving_state = {'enable_product_adding' : False ,
-                          'pro_name_receiving' : False , 
-                          'data_limit_receiving' : False ,
-                          'expire_date_receiving' : False ,
-                          'pro_cost_receiving' : False ,
-                          }
-
-
-product_information = {'product_name' : '' ,
-                       'data_limit' : '' ,
-                       'expire_date' : '' ,
-                       'pro_cost' : '' , 
-                       'panel_id' : ''
-                      }
-
-#> ./management > product > add_product - select_panelId (step-1-1)
-@bot.callback_query_handler(func = lambda call : call.data.startswith('add_product_'))
-def handle_incoming_product_panelId(call) :
-
-    product_reciving_state.update({key : False for key in product_reciving_state if key  != 'enable_product_adding' })
-
-    if call.data.startswith('add_product_') : 
-        product_reciving_state['enable_product_adding'] = True
-        product_information['panel_id'] = int(call.data.split('_')[-1])
-
-        bot.send_message(call.message.chat.id ,
-                         text = 'Now me send you\'r product name? \n\n to cancel it : /cancel'
-                         )
-        
-
-#> ./management > product > add_product - product_name (step-1-2)
-@bot.message_handler(func = lambda message : product_reciving_state['pro_name_receiving'] == False and product_reciving_state['enable_product_adding'] == True)
-def handle_incoming_product_name(message) :
-
-    if product_reciving_state['pro_name_receiving'] == False :
-
-        if message.text == '/cancel' : 
-            product_reciving_state.update({key : False for key in product_reciving_state})
-
-            bot.send_message(message.chat.id ,
-                            'adding product /CANCELED/' ,
-                             reply_markup = BotKb.product_management_menu_in_admin_side()
-                            )
-        else :
-
-            if len(message.text) <= 128 :  
-                product_information['product_name'] = message.text
-                product_reciving_state['pro_name_receiving'] = True
-
-                bot.send_message(message.chat.id ,
-                                text = 'Now send me you\'r product data limit? \n\n to cancel it : /cancel'
-                                )
-                
-            else :
-                bot.send_message(message.chat.id ,
-                                 'Product name must be under 128 character \n\n Please try again !! \n\n to cancel it : /cancel'
-                                )
-                
-                
-#> ./managemet > product > add_product - data_limit (step-1-3)
-@bot.message_handler(func = lambda message : product_reciving_state['data_limit_receiving'] == False and product_reciving_state['enable_product_adding'] == True)
-def handle_incoming_data_limit(message) :
-
-    if product_reciving_state['data_limit_receiving'] == False and message.text =='/cancel' :
-        product_reciving_state.update({key : False for key in product_reciving_state})
-        bot.send_message(message.chat.id ,
-                         'adding product /CANCELED/ ' , 
-                         reply_markup = BotKb.product_management_menu_in_admin_side()
-                        )
-        
-    else :
-
-        if message.text.isdigit() :
-            data_limit_checker = re.search(r'([0-9]{1,9}|[0-9]{1,9}\.[0-9]{0,2})', message.text)
-
-            if data_limit_checker :
-                product_information['data_limit'] = data_limit_checker.group(0)
-                product_reciving_state['data_limit_receiving'] = True
-                bot.send_message(message.chat.id ,
-                                text = 'Now send me you\'r product expire date? \n\n to cancel it : /cancel'
-                                )
-            
-            else : 
-                bot.send_message(message.chat.id ,
-                                'Please send me in this format : amount.00 \n\n to cancel it : /cancel'
-                                )
-                
-        else :
-            bot.send_message(message.chat.id , 
-                            'please send me digits not strings \n\n to cancel it : /cancel'
-                            )
-            
-
-#> ./management > product >  add_product - expire_date (step-1-4)
-@bot.message_handler(func = lambda message : product_reciving_state['expire_date_receiving'] == False and product_reciving_state['enable_product_adding'] == True)
-def handle_incoming_expire_date(message) :
-
-    if product_reciving_state['expire_date_receiving'] == False and message.text =='/cancel' :
-        product_reciving_state.update({key : False for key in product_reciving_state})
-        bot.send_message(message.chat.id , 'adding product /CANCELEC/' ,
-                         reply_markup = BotKb.product_management_menu_in_admin_side()
-                        )
-        
-    else :
-
-        if message.text.isdigit():
-            product_information['expire_date'] = message.text
-            product_reciving_state['expire_date_receiving'] = True
-            bot.send_message(message.chat.id ,
-                            text = 'Send me the price of the product? \n\n to cancel it : /cancel'
-                            )
-            
-        else : 
-            bot.send_message(message.chat.id , 
-                            'please send me digits not strings \n\n to cancel ir : /cancel'
-                            )
-            
-
-#> ./management > product > add_product - pro_cost (step-1-5)
-@bot.message_handler(func = lambda message : product_reciving_state['pro_cost_receiving'] == False and product_reciving_state['enable_product_adding'] == True)
-def handle_incoming_expire_date(message) :
-
-    if product_reciving_state['pro_cost_receiving'] == False and message.text == '/cancel' :
-        product_reciving_state.update({key : False for key in product_reciving_state})
-        bot.send_message(message.chat.id ,
-                        'adding product /CANCELEC/' ,
-                        reply_markup = BotKb.product_management_menu_in_admin_side()
-                        )
-        
-    else :
-
-        if message.text.isdigit() :
-            product_information['pro_cost'] = message.text
-            product_reciving_state['pro_cost_receiving'] = True
-            product_id_STRgenerated = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(4))
-            products_obejcts = [i.id for i in products.objects.all()] 
-            
-            try:
-                product_ = products.objects.create(product_name = product_information['product_name'],
-                                                data_limit=product_information['data_limit'],
-                                                expire_date=product_information['expire_date'],
-                                                pro_cost=product_information['pro_cost'],
-                                                panel_id=product_information['panel_id'],
-                                                pro_id_str = product_id_STRgenerated ,
-                                                sort_id = max(products_obejcts)+1 if products_obejcts  else 1
-                                                )
-                
-            except Exception as product_creation:
-                print(f'Error during creating product \n\t Error-msg : {product_creation}')
-                bot.send_message(message.chat.id , 
-                                'something went wrong \n\n please try again' ,
-                                )
-                
-            product_information.update({key : '' for key in product_information})
-            bot.send_message(message.chat.id ,
-                            'Product successfully added' ,
-                            reply_markup = BotKb.product_management_menu_in_admin_side()
-                            )
-                
-        else :
-            bot.send_message(message.chat.id , 
-                             'please send me digits not strings \n\n to cancel ir : /cancel'
-                            )
-            
-
-
-
-
-
-
-
-product_remove_panelpk = {'panel_pk' : ''}
-#> ./management > product > remove-product (step-1-1)
-@bot.callback_query_handler(func= lambda call : call.data in [str(i.id) +'b' for i in products.objects.all()] or call.data.startswith('remove_product_'))
-def handle_removing_products (call) :
-    
-    if call.data.startswith('remove_product_'):
-        if BotKb.product_managemet_remove_products(panel_pk = call.data.split('_')[-1]) == 'no_products_to_remove':
-            bot.send_message(call.message.chat.id , 'no products \n\n\t add your first' )
-        else :
-            product_remove_panelpk['panel_pk'] = call.data.split('_')[-1]
-            bot.edit_message_text('which products do you want to remove ? \n\n tap to remove product ' ,
-                                call.message.chat.id ,
-                                call.message.message_id ,
-                                reply_markup = BotKb.product_managemet_remove_products(panel_pk = call.data.split('_')[-1]))
-            
-
-
-
-    if call.data in [str(i.id) + 'b' for i in products.objects.all()] :
-        call_ = call.data
-        ob_ = re.sub(r'[a-zA-z]+' ,'',call_)
-        productname = products.objects.get(id = ob_)
-        
-
-        try :
-            product_to_remove = products.objects.get(id = ob_).delete()
-
-
-        except Exception as products_errorRiase :
-            print(f'Error during removing product \n Error_msg : {products_errorRiase}')
-            bot.send_message(call.message.chat.id , 
-                            text = f'Error during removing product \n\n Error_msg : {products_errorRiase}' ,
-                            reply_markup = BotKb.product_managemet_remove_products(panel_pk = product_remove_panelpk['panel_pk'])
-                            )
-        
-
+        no_panel=BotKb.load_panel_add_product(remove_product=True)
+        if no_panel=='no_panel_to_load':
+            bot.send_message(call.message.chat.id , Text_0)
         else:
-            bot.edit_message_text(f'Product removed succesfully \n\n  product name : {productname.product_name}' ,
-                                  call.message.chat.id ,
-                                  call.message.message_id ,
-                                  reply_markup = BotKb.product_managemet_remove_products(panel_pk = product_remove_panelpk['panel_pk'])
-                                  )
+            Text_4='📌پنلی که میخواهید محصولات آن را حذف کنید را انتخاب نمایید'
+            bot.edit_message_text(Text_4, call.message.chat.id , call.message.message_id , reply_markup=BotKb.load_panel_add_product(remove_product=True))
+        
+
+    
+    #- Managing products
+    if call.data=='manage_products':
+        keyboard_manage=InlineKeyboardMarkup()
+        no_panel=BotKb.load_panel_add_product(manage_product=True)
+        if no_panel=='no_panel_to_load':
+            bot.send_message(call.message.chat.id , Text_0)
+        else:
+            Text_5='📌پنلی را که میخواهید محصولات آن را مدیریت کنید انتخاب نمایید'
+            bot.edit_message_text(Text_5 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.load_panel_add_product(manage_product=True))
+                            
+
+
+
+
+#-------------ADD_products-SECTION
+PRODUCT_RECEIVING_STATE={'Enable_Product_Adding' : False , 'Product_Name_Receiving' : False , 
+                          'Data_Limit_Receiving' : False , 'Expire_Date_Receiving' : False ,
+                          'Product_Cost_Receiving' : False ,}
+
+
+PRODUCT_INFORMATION={'Panel_Id' : '', 
+                    'Product_Name' : '' ,'Data_Limit' : '' ,
+                    'Expire_Date' : '' , 'Product_Cost' : '' , }
+
+INBOUND_SELECTOR={'Inbounds':None}
+
+#> ./Management > Product > Add_Product - Select_PanelId(step-1)
+@bot.callback_query_handler(func=lambda call:call.data.startswith('panel_product_'))
+def handle_incoming_product_panelId(call):
+    if call.data.startswith('panel_product_'): 
+        
+        PRODUCT_RECEIVING_STATE['Enable_Product_Adding']=True
+        PRODUCT_RECEIVING_STATE.update({key:False for key in PRODUCT_RECEIVING_STATE if key!='Enable_Product_Adding'})
+        INBOUND_SELECTOR['Inbounds']=''
+        call_data=call.data.split("_")
+        PRODUCT_INFORMATION['Panel_Id']=call_data[2]
+        call_panel_api = panelsapi.marzban(panel_id=call_data[2])
+        inbounds = call_panel_api.get_inbounds()
+        INBOUND_SELECTOR['Inbounds'] = [f" {tag['protocol']} : {tag['tag']} " for outer in inbounds for tag in inbounds[outer]]
+        Text_1='📌یک نام برای محصول خود انتخاب نمایید \n\nTO CANCEL : /CANCEL'
+        bot.send_message(call.message.chat.id , Text_1)
+        
+
+
+
+#> ./Management > Product > Add_Product - Product_Name(step2)
+@bot.message_handler(func=lambda message :PRODUCT_RECEIVING_STATE['Enable_Product_Adding']==True and PRODUCT_RECEIVING_STATE['Product_Name_Receiving']==False)
+def handle_incoming_product_name(message):
+    if PRODUCT_RECEIVING_STATE['Product_Name_Receiving']==False and (message.text=='/cancel' or message.text=='/cancel'.upper()):
+        PRODUCT_RECEIVING_STATE.update({key:False for key in PRODUCT_RECEIVING_STATE})
+        Text_1='✍🏻 .اضافه کردن محصول لغو شد!!'
+        bot.send_message(message.chat.id , Text_1 , reply_markup=BotKb.product_management_menu_in_admin_side())
+    else :
+        if len(message.text)<=128:  
+            PRODUCT_INFORMATION['Product_Name']=message.text
+            PRODUCT_RECEIVING_STATE['Product_Name_Receiving'] = True
+            Text_2='🔋مقدار حجم محصول را ارسال کنید \n ⚠️ دقت کنید حجم محصول باید برحسب گیگابایت باشد \n\nTO CANCEL : /CANCEL'
+            bot.send_message(message.chat.id , Text_2)
+        else:
+            Text_3='❌نام محصول نباید بیشتر از 64 حرف/کرکتر باشد \n\nTO CANCEL : /CANCEL'
+            bot.send_message(message.chat.id , Text_3)
+
+
+
+#> ./Managemet > Product > Add_Product - Data_Limit(step-3)
+@bot.message_handler(func=lambda message:PRODUCT_RECEIVING_STATE['Enable_Product_Adding']==True and PRODUCT_RECEIVING_STATE['Data_Limit_Receiving']==False )
+def handle_incoming_data_limit(message) :
+    if PRODUCT_RECEIVING_STATE['Data_Limit_Receiving']==False and (message.text=='/cancel' or message.text=='/cancel'.upper()):
+        PRODUCT_RECEIVING_STATE.update({key:False for key in PRODUCT_RECEIVING_STATE})
+        Text_1='✍🏻 .اضافه کردن محصول لغو شد!!'
+        bot.send_message(message.chat.id , Text_1 , reply_markup=BotKb.product_management_menu_in_admin_side())
+    else :
+        if message.text.isdigit():
+            data_limit_checker=re.search(r'([0-9]{1,9}|[0-9]{1,9}\.[0-9]{0,3})' , message.text)
+            if data_limit_checker:
+                PRODUCT_INFORMATION['Data_Limit']=data_limit_checker.group(0)
+                PRODUCT_RECEIVING_STATE['Data_Limit_Receiving']=True
+                Text_2='⌛️مقدار دوره محصول را ارسال کنید \n\n مثال :30,60 \n⚠️ این عدد در هنگام خرید محصول به عنوان روز در نظر گرفته میشود : مثلا 30 روز\n\nTO CANCEL : /CANCEL'
+                bot.send_message(message.chat.id , Text_2)
+            else:
+                Text_3='❌فرمت حجم محصول اشتباه است\n\nفرمت صحیح میتواند با اعشار تمام شود \nمثلا:20,30 \n\nTO CANCEL : /CANCEL'
+                bot.send_message(message.chat.id , Text_3)
+        else:
+            Text_4='❌متن ارسالی باید شامل عدد باشد نه حروف \n\nTO CANCEL : /CANCEL'
+            bot.send_message(message.chat.id , Text_4)
             
 
 
 
+#> ./Management > Product >  Add_Product - Expire_Date(step-4)
+@bot.message_handler(func=lambda message:PRODUCT_RECEIVING_STATE['Enable_Product_Adding']==True and PRODUCT_RECEIVING_STATE['Expire_Date_Receiving']==False)
+def handle_incoming_expire_date(message):
+    if PRODUCT_RECEIVING_STATE['Expire_Date_Receiving']==False and (message.text=='/cancel' or message.text=='/cancel'.upper()):
+        PRODUCT_RECEIVING_STATE.update({key:False for key in PRODUCT_RECEIVING_STATE})
+        Text_1='✍🏻 .اضافه کردن محصول لغو شد!!'
+        bot.send_message(message.chat.id , Text_1 , reply_markup=BotKb.product_management_menu_in_admin_side())
+    else:
+        if message.text.isdigit():
+            PRODUCT_INFORMATION['Expire_Date']=message.text
+            PRODUCT_RECEIVING_STATE['Expire_Date_Receiving']=True
+            Text_2='💵قیمت محصول را ارسال کنید \n⚠️قیمت محصول باید به تومان باشد\n\nTO CANCEL : /CANCEL'
+            bot.send_message(message.chat.id , Text_2)
+        else : 
+            Text_3='❌متن ارسالی باید شامل عدد باشد نه حروف \n\nTO CANCEL : /CANCEL'
+            bot.send_message(message.chat.id , Text_3)
+            
+
+
+#> ./Management > Product > Add_Product - Pro_Cost(step-5)
+@bot.message_handler(func=lambda message:PRODUCT_RECEIVING_STATE['Enable_Product_Adding']==True and PRODUCT_RECEIVING_STATE['Product_Cost_Receiving']==False)
+def handle_incoming_expire_date(message):
+    if PRODUCT_RECEIVING_STATE['Product_Cost_Receiving']==False and (message.text=='/cancel' or message.text=='/cancel'.upper()):
+        PRODUCT_RECEIVING_STATE.update({key:False for key in PRODUCT_RECEIVING_STATE})
+        Text_1='✍🏻 .اضافه کردن محصول لغو شد!!'
+        bot.send_message(message.chat.id , Text_1 , reply_markup=BotKb.product_management_menu_in_admin_side())
+    else :
+        if not message.text.isdigit():
+            Text_2='❌متن ارسالی باید شامل عدد باشد نه حروف \n\nTO CANCEL : /CANCEL'
+            bot.send_message(message.chat.id , Text_2 )
+        else:
+            PRODUCT_INFORMATION['Product_Cost']=message.text
+            PRODUCT_RECEIVING_STATE['Product_Cost_Receiving']=True
+            Text_3=f'اینباند های محصول را انتخاب کنید\n این اینباند هنگام ساخت محصول داخل اشتراک قرار خواهد گرفت\nلیست اینباند های انتخابی :\n []'
+            bot.send_message(message.chat.id , Text_3 , reply_markup=BotKb.select_inbounds(INBOUND_SELECTOR['Inbounds']))
+            
+            
+
+#> ./Management > Product > Add_Product - Pro_Inbounds(step-6)
+@bot.callback_query_handler(func=lambda call:(INBOUND_SELECTOR['Inbounds'] is not None and call.data in INBOUND_SELECTOR['Inbounds']) or call.data in ['done_inbounds' , 'back_from_inbounds_selecting'])
+def select_inbounds(call):
+    if  (INBOUND_SELECTOR['Inbounds'] is not None and call.data in INBOUND_SELECTOR['Inbounds']):
+        inbounds_list=INBOUND_SELECTOR['Inbounds']
+        for i in inbounds_list:
+            if call.data==i:
+                index_inboundlist=inbounds_list.index(call.data)
+                if '✅' in i:
+                    new_values=i.replace('✅', '❌')
+                    inbounds_list[index_inboundlist]=new_values  
+                elif '❌' in i:
+                    new_values=i.replace('❌', '✅')
+                    inbounds_list[index_inboundlist]=new_values  
+                else:
+                    values=i + '✅'
+                    inbounds_list[index_inboundlist]=values  
+        print(INBOUND_SELECTOR)
+        inbounds_checkmark=[]
+        for i in INBOUND_SELECTOR['Inbounds']:
+            if  '✅' in i:
+                inbounds_checkmark.append(i.strip('✅'))
+            Text_1=f"لیست اینباند های انتخابی:\n\n {inbounds_checkmark}"
+        keyboard = BotKb.select_inbounds(inbounds_list) 
+        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=keyboard)
+
+
+    if call.data=='done_inbounds':
+        grouped_inbounds = {}
+        for items in INBOUND_SELECTOR['Inbounds']:
+            key , value = items.split(':' , 1)
+            if '✅' in value:
+
+                if key not in grouped_inbounds :
+                    grouped_inbounds[key]=[]
+                grouped_inbounds[key].append(value.strip('✅'))
+        if len(grouped_inbounds) > 0:
+            add_product_database(call , bot , PRODUCT_INFORMATION , grouped_inbounds)
+        else:
+            bot.answer_callback_query(call.id , 'اینباند محصول نمیتواند خالی باشد')
 
 
 
-#> ./management > product > remove-product - next-or-prev-buttons (step-1-2)
-@bot.callback_query_handler(func = lambda call :  call.data.startswith('next_page_products_') or call.data.startswith('prev_page_products_'))
-def handle_NextPrev_button_in_remove_product(call):
+    if call.data=='back_from_inbounds_selecting':
+        Text_2='✏️شما در حال مدیریت کردن بخش محصولات میباشید'
+        bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.product_management_menu_in_admin_side())
+        bot.answer_callback_query(call.id , 'اضافه کردن محصول لغو شد')
 
-    page_number = int(call.data.split('_')[-1])
 
-    if call.data.startswith('next_page_products'):
-        bot.edit_message_text(f'which products do you want to remove ? \n tap to remove product \n\n page : {page_number}' , 
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup= BotKb.product_managemet_remove_products(panel_pk = product_remove_panelpk['panel_pk'] , page = page_number)
-                             )
+
+
+
+
+#-------------REMOVE_products-SECTION
+PRODUCT_REMOVE_PANELID = {'Panel_Id' : int}
+#> ./Management > Product > Remove-Product (step-1)
+@bot.callback_query_handler(func=lambda call:call.data.startswith(('remove_panel_product_' , 'delete_prodcut_' , 'remove_prev_page_products_' , 'remove_next_page_products_')) or call.data in ['back_remove_panel_product_', 'back_panel_product_' , 'back_managing_panel_product_' , 'back_from_remove_products'])
+def handle_removing_products(call):
+
+    #-load panels 
+    if call.data.startswith('remove_panel_product_'):
+        call_data=call.data.split('_')
+        if BotKb.product_managemet_remove_products(panel_pk=call_data[3])=='no_products_to_remove':
+            Text_1='هیچ محصولی وجود ندارد \n محصولی اضافه  کنید\n\n /add_product'
+            bot.send_message(call.message.chat.id , Text_1)
+        else:
+            Text_2='محصولی را که میخواهید حذف کنید را انتخاب کنید\n برای حذف کافیست بر روی آن کلیک کنید'
+            PRODUCT_REMOVE_PANELID['Panel_Id']=call_data[3]
+
+            bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.product_managemet_remove_products(panel_pk=call_data[3]))
+            
+
+    #- delete product
+    if call.data.startswith('delete_prodcut_'):
+        print(PRODUCT_REMOVE_PANELID)
+        call_data=call.data.split('_')
+        remove_product_database(call , bot , call_data[2] , PRODUCT_REMOVE_PANELID)
+
+
+
+    #- next page
+    if call.data.startswith('remove_next_page_products_'):
+        page_number=int(call.data.split('_')[-1])
+        Text_3=f'محصولی را که میخواهید حذف کنید را انتخاب کنید\n برای حذف کافیست بر روی آن کلیک کنید \n صفحه :‌ {page_number}'
+        bot.edit_message_text(Text_3 , call.message.chat.id ,call.message.message_id ,reply_markup= BotKb.product_managemet_remove_products(panel_pk=PRODUCT_REMOVE_PANELID['Panel_Id'] , page=page_number))
         
 
-    if call.data.startswith('prev_page_products_') :
-        bot.edit_message_text(f'which products do you want to remove ? \n tap to remove product \n\n page : {page_number}' , 
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup= BotKb.product_managemet_remove_products(panel_pk = product_remove_panelpk['panel_pk'] , page = page_number)
-                             )
+    #- prev page
+    if call.data.startswith('remove_prev_page_products_') :
+        page_number=int(call.data.split('_')[-1])
+        Text_4=f'محصولی را که میخواهید حذف کنید را انتخاب کنید\n برای حذف کافیست بر روی آن کلیک کنید \n صفحه :‌ {page_number}'
+        bot.edit_message_text(Text_4 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.product_managemet_remove_products(panel_pk=PRODUCT_REMOVE_PANELID['Panel_Id'] , page=page_number))
 
 
 
+    #- back - button
+    if call.data=='back_remove_panel_product_' or call.data=='back_panel_product_' or call.data=='back_managing_panel_product_':
+        Text_back_1='✏️شما در حال مدیریت کردن بخش محصولات میباشید'
+        bot.edit_message_text(Text_back_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.product_management_menu_in_admin_side())
 
 
+    if call.data=='back_from_remove_products':
+        Text_back_2='پنلی که میخواهید محصولات آن را حذف کنید را انتخاب نمایید'
+        bot.edit_message_text(Text_back_2 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.load_panel_add_product(remove_product=True) )
 
-
-
-
-
-
-#> ./management > product >  - back-buttons (step-1)
-@bot.callback_query_handler(func = lambda call : call.data =='back_from_chooing_panel_to_manage_product' or call.data == 'back_from_manage_products_changing_limit' or call.data == 'back_from_remove_products' or call.data == 'back_from_chooing_panel_to_remove_product' or call.data == 'back_from_chooing_panel_to_add_product' or call.data == 'back_from_manage_products_list_updown')
-def back_button_in_remove_product(call):
-
-
-    if call.data == 'back_from_remove_products' :
-        product_remove_panelpk['panel_pk'] = ''
-
-        keyboard_remove = InlineKeyboardMarkup()
-
-        for i in v2panel.objects.all():
-            buttons = InlineKeyboardButton(text = i.panel_name , callback_data ='remove_product_' + str( i.id))
-            keyboard_remove.add(buttons)
-
-        back_button_remove = InlineKeyboardButton(text = 'بازگشت ↪️'  , callback_data = 'back_from_chooing_panel_to_remove_product')
-        keyboard_remove.add(back_button_remove)
-
-        bot.edit_message_text('which panel do you want  ? \n\n tap to choose' ,
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup = keyboard_remove
-                             )
-
-
-
-
-
-    if call.data == 'back_from_chooing_panel_to_remove_product' or call.data == 'back_from_chooing_panel_to_add_product' :
-        bot.edit_message_text('you\'re managing products !!',
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup = BotKb.product_management_menu_in_admin_side()
-                             )
-
-
-
-
-    if call.data == 'back_from_manage_products_list_updown':
-        keyboard_manage = InlineKeyboardMarkup()
-
-        for i in v2panel.objects.all():
-            buttons = InlineKeyboardButton(text= i.panel_name , callback_data = 'manage_product_' + str(i.id))
-            keyboard_manage.add(buttons)
-
-        back_button_manage = InlineKeyboardButton(text = 'بازگشت ↪️' , callback_data = 'back_from_chooing_panel_to_manage_product')
-        keyboard_manage.add(back_button_manage)
-
-        bot.edit_message_text('which panel do you want  ? \n\n tap to choose or tap بازگشت' ,
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup = keyboard_manage)
-
-
-
-    if call.data == 'back_from_manage_products_changing_limit' :
-        bot.edit_message_text('all products listed here', 
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup = BotKb.products_list(panel_pk= panel['panelpk']))
-
-
-
-    if call.data == 'back_from_chooing_panel_to_manage_product':
-        bot.edit_message_text('you \re managing products !!' ,
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup = BotKb.product_management_menu_in_admin_side())
-
-
-
-
-
-
-
-
-
-
-
-panel = {'panelpk' : ''}
-#> ./management > products > manage-product (step-1)
-@bot.callback_query_handler(func = lambda call : call.data.startswith('manage_product_'))
-def manage_product_choose_panel(call) : 
     
-    if call.data.startswith('manage_product_'):
-        if BotKb.products_list(call.data.split('_')[-1]) == 'no_product_to_manage':
-            bot.send_message(call.message.chat.id , 'no products to manage \n\n\t add your first')
-        else :
-            panel_pk = call.data.split('_')[-1]
-            panel['panelpk'] = panel_pk
 
-            bot.edit_message_text('all products listed here' , 
-                                call.message.chat.id ,
-                                call.message.message_id ,
-                                reply_markup= BotKb.products_list(panel_pk = panel_pk)
-                                )
+
+
+
+
+#-------------MANAGING_products-SECTION
+
+PANEL_PK={'PanelPK' : ''}
+PRODUCT_PAGE={'Page' : 1}
+
+#> ./Management > Products > Manage-Product(step-1)
+@bot.callback_query_handler(func=lambda call:call.data.startswith(('managing_panel_product_' , 'down_' , 'up_' , 'product_next_page_products_' , 'product_prev_page_products_')) or call.data in ['back_from_manage_products_list_updown'])
+def manage_product_choose_panel(call): 
+    #- Listing product
+    if call.data.startswith('managing_panel_product_'):
+        if BotKb.products_list(call.data.split('_')[3])=='no_product_to_manage':
+            Text_1='هیچ محصولی وجود ندارد ❌\n محصولی اضافه  کنید\n\n /add_product'
+            bot.send_message(call.message.chat.id , Text_1)
+        else:
+            call_data=call.data.split('_')[-1]
+            PANEL_PK['PanelPK']=call_data
+            panel_=v2panel.objects.get(id=call_data)
+            Text_2=f'📝لیست تمام محصولات پنل <b>({panel_.panel_name})</b> به صورت زیر میباشد'
+            bot.edit_message_text(Text_2 , call.message.chat.id ,call.message.message_id ,reply_markup= BotKb.products_list(panel_pk=call_data) , parse_mode='HTML')
         
 
-
-prodcuts_page = {'page' : 1}
-#> ./management > products > manage-product (step-1-2)
-@bot.callback_query_handler( func = lambda  call : call.data.startswith('down_') or call.data.startswith('up_'))
-def handle_sorts(call) :
-    
-    
+    #- down button
     if call.data.startswith('down_'):
-        BotKb.products_list(panel_pk=panel['panelpk'], down=int(call.data.split('_')[-1]))
-        bot.edit_message_text('reordered - down',
-                              call.message.chat.id,
-                              call.message.message_id,
-                              reply_markup=BotKb.products_list(panel_pk=panel['panelpk'], page=prodcuts_page['page']))
+        call_data=call.data.split('_')[-1]
+        BotKb.products_list(panel_pk=PANEL_PK['PanelPK'] , down=int(call_data))
+        Text_3='جایگاه محصول به پایین🔻 جابه جا شد \n ⚪️این جابه جایی در نحوه نمایش محصول هنگام خرید تاثیر خواهد گزاشت'
+        bot.edit_message_text(Text_3 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.products_list(panel_pk=PANEL_PK['PanelPK'] , page=PRODUCT_PAGE['Page']))
 
-
+    #- up button
     if call.data.startswith('up_'):
-        BotKb.products_list(panel_pk=panel['panelpk'], up=int(call.data.split('_')[-1]))
-        bot.edit_message_text('reordered - up',
-                              call.message.chat.id,
-                              call.message.message_id,
-                              reply_markup=BotKb.products_list(panel_pk=panel['panelpk'], page=prodcuts_page['page']))
+        call_data=call.data.split('_')[-1]
+        Text_3='جایگاه محصول به بالا🔺 جابه جا شد \n ⚪️این جابه جایی در نحوه نمایش محصول هنگام خرید تاثیر خواهد گزاشت'
+        BotKb.products_list(panel_pk=PANEL_PK['PanelPK'] , up=int(call_data))
+        bot.edit_message_text(Text_3 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.products_list(panel_pk=PANEL_PK['PanelPK'], page=PRODUCT_PAGE['Page']))
     
 
-
-#> ./management > product > manage-product - next-or-prev-buttons (step-1-2)
-@bot.callback_query_handler(func = lambda call :  call.data.startswith('product_next_page_products_') or call.data.startswith('product_prev_page_products_'))
-def handle_NextPrev_button_in_remove_product(call):
-
-    page_number = int(call.data.split('_')[-1])
-    prodcuts_page['page'] = page_number
-
+    #- Next button
     if call.data.startswith('product_next_page_products_'):
-        bot.edit_message_text(f'which products do you want  ? \n tap  product \n\n page : {page_number}' , 
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup= BotKb.products_list(panel_pk=panel['panelpk']  ,  page = page_number)
-                             )
+        call_data=call.data.split('_')[-1]
+        PRODUCT_PAGE['Page'] = int(call_data)
+        Text_4=f'بروی محصولی که میخواهید مدیریت کنید کلیک کنید\n 📂صفحه محصول بارگزاری شده :{int(call_data)}'
+        bot.edit_message_text(Text_4 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.products_list(panel_pk=PANEL_PK['PanelPK']  ,  page=int(call_data)))
            
 
+
+    #- Prev button
     if call.data.startswith('product_prev_page_products_') :
-        bot.edit_message_text(f'which products do you want ? \n tap  product \n\n page : {page_number}' , 
-                              call.message.chat.id ,
-                              call.message.message_id ,
-                              reply_markup= BotKb.products_list(panel_pk= panel['panelpk'] ,  page = page_number)
-                             )
+        call_data=call.data.split('_')[-1]
+        PRODUCT_PAGE['Page'] = int(call_data)
+        Text_5=f'بروی محصولی که میخواهید مدیریت کنید کلیک کنید\n 📂صفحه محصول بارگزاری شده :{int(call_data)}'
+        bot.edit_message_text(Text_5 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.products_list(panel_pk=PANEL_PK['PanelPK'] ,  page=int(call_data)))
         
 
+    #- Back button 
+    if call.data=='back_from_manage_products_list_updown':
+        Text_back='📌پنلی را که میخواهید محصولات آن را مدیریت کنید انتخاب نمایید'
+        bot.edit_message_text(Text_back , call.message.chat.id , call.message.message_id , reply_markup=BotKb.load_panel_add_product(manage_product=True))
 
 
 
 
 
 
+PRODUCT_ID={'Product_Id' : int }
+CHNAGING_PRODUCT_DETAILS = {'Enable_Changing_Product_Deatails' : False ,'Product_Name' : False ,
+                            'Data_Limit' : False , 'Expire_Date' : False ,
+                            'Product_Cost' : False}
+CHANGED_INBOUND = {'inbounds' : None , 'product_id' : int}
 
-
-
-
-product_id = {'product_pk' : 0 }
-#> ./management > products > manage-product (step-1-3)
-@bot.callback_query_handler(func = lambda call : call.data.startswith('detaling_product_'))
+#> ./Management > Products > Manage-Product(step-1)
+@bot.callback_query_handler(func=lambda call:call.data.startswith(('detaling_product_' , '_pr_status_' , '_product_name_' , '_data_limit_', 'ـexpire_date_' , '_pro_cost_', '_inbounds_product_')) or call.data in ['back_from_manage_products_changing_limit' , 'change_inbound_done' , 'back_from_inbounds_chaging'] or (CHANGED_INBOUND['inbounds']  is not None and call.data in CHANGED_INBOUND['inbounds']))
 def manage_products_base_id (call) : 
-
-
+    #-start changing
     if call.data.startswith('detaling_product_') : 
-        changing_product_details['enable_changing_product_deatails'] = True
-        product_id['product_pk'] = 0
-        product_id['product_pk'] = int(call.data.split('_')[-1])
-
-        bot.edit_message_text('to change details tap on them ' ,
-                              call.message.chat.id ,
-                              call.message.message_id , 
-                              reply_markup = BotKb.product_changing_details(product_id = int(call.data.split('_')[-1]))
-                            )
+        CHNAGING_PRODUCT_DETAILS['Enable_Changing_Product_Deatails']=True
+        call_data =call.data.split('_')
+        PRODUCT_ID['Product_Id']=0
+        PRODUCT_ID['Product_Id']=int(call_data[-1])
+        Text_1='🖋برای تغییر تنظیمات هر محصول بر روی آن کلیک کنید'
+        bot.edit_message_text(Text_1,call.message.chat.id ,call.message.message_id , reply_markup=BotKb.product_changing_details(product_id=int(call_data[-1])))
 
 
+    #-product status
+    if call.data.startswith('_pr_status_'):
+        call_data = call.data.split('_')
+        change_product_status(call , bot , call_data[-1] )
 
 
-
-changing_product_details = {'enable_changing_product_deatails' : False ,
-                            'product_name' : False ,
-                            'data-limit' : False ,
-                            'expire_date' : False ,
-                            'pro_cost' : False}
-
-
-
-#> ./management > products > manage-product - changing product-name -1 (step-1-4)
-@bot.callback_query_handler(func = lambda call: call.data.startswith('_product_name_'))
-def change_prodcut_name_details(call) : 
-
-    if changing_product_details['enable_changing_product_deatails'] == True :
-            
-            if call.data.startswith('_product_name_')  :
-                changing_product_details['product_name'] = True
-                bot.send_message(call.message.chat.id ,
-                                'send me your new product ||| name? \n\n to cancel it : /cancel'
-                                )
+    #-product name
+    if call.data.startswith('_product_name_')  :
+        if CHNAGING_PRODUCT_DETAILS['Enable_Changing_Product_Deatails']==True :      
+            CHNAGING_PRODUCT_DETAILS['Product_Name'] = True
+            Text_2=f'🔗نام جدید محصول را وارد نمایید\n\nTO CANCEL : /CANCEL'
+            bot.send_message(call.message.chat.id , Text_2)
                 
-    else :
-        bot.answer_callback_query(call.id , 'pls use back button and try again')
+
+    #- product data-limit
+    if call.data.startswith('_data_limit_') :
+        if CHNAGING_PRODUCT_DETAILS['Enable_Changing_Product_Deatails'] == True :
+            CHNAGING_PRODUCT_DETAILS['Data_Limit'] = True
+            Text_3='🔗حجم جدید محصول را وارد نمایید\n\nTO CANCEL : /CANCEL'
+            bot.send_message(call.message.chat.id , Text_3)
+
+
+    #- product expire-date
+    if call.data.startswith('ـexpire_date_') :
+        if CHNAGING_PRODUCT_DETAILS['Enable_Changing_Product_Deatails'] == True :
+            CHNAGING_PRODUCT_DETAILS['Expire_Date'] = True
+            Text_4='🔗دوره جدید محصول را وارد نمایید \n\nTO CANCEL : /CANCEL'
+            bot.send_message(call.message.chat.id , Text_4)
+
+
+    #- product cost            
+    if call.data.startswith('_pro_cost_') :
+         if CHNAGING_PRODUCT_DETAILS['Enable_Changing_Product_Deatails'] == True :
+            CHNAGING_PRODUCT_DETAILS['Product_Cost'] = True
+            Text_5='🔗قیمت جدید محصول را وارد نمایید \n\nTO CANCEL : /CANCEL'
+            bot.send_message(call.message.chat.id , Text_5)
+
+
+
+    #- product - inbounds
+    if call.data.startswith('_inbounds_product_'):
+        call_data = call.data.split('_')
+        panel_id = products.objects.get(id = call_data[-1])
+        get_inbounds = panelsapi.marzban(panel_id.panel_id).get_inbounds()
+        inbound_list = [f" {tag['protocol']} : {tag['tag']} "  for outer in get_inbounds for tag in get_inbounds[outer]]
+        CHANGED_INBOUND['inbounds'] = inbound_list
+        CHANGED_INBOUND['product_id'] = call_data[-1]
+        Text_6=f'📥اینباند محصول را انتخاب نمایید و سپس گزینه اتمام را بزنید'
+        bot.edit_message_text(Text_6 , call.message.chat.id , call.message.message_id , reply_markup= BotKb.change_inbounds(CHANGED_INBOUND['inbounds'] ))
+
+    
+
+
+    if CHANGED_INBOUND['inbounds'] is not None and call.data in CHANGED_INBOUND['inbounds'] :
+        change_product_inbound(call , bot , CHANGED_INBOUND)
+
+
+    if call.data =='change_inbound_done':
+        grouped_inbounds = {}
+        for items in CHANGED_INBOUND['inbounds']:
+            key , value = items.split(':' , 1)
+            if '✅' in value:
+                if key not in grouped_inbounds :
+                    grouped_inbounds[key]=[]
+                grouped_inbounds[key].append(value.strip('✅'))
+        product_= products.objects.get(id = CHANGED_INBOUND['product_id'])
+        product_.inbounds_selected = json.dumps(grouped_inbounds , indent=1)
+        product_.save()
+        Text_2='🖋برای تغییر تنظیمات هر محصول بر روی آن کلیک کنید'
+        bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.product_changing_details(CHANGED_INBOUND['product_id']))
+    
+
+    #-back buttons
+    if call.data=='back_from_inbounds_chaging':
+        Text_back_1='🖋برای تغییر تنظیمات هر محصول بر روی آن کلیک کنید'
+        bot.edit_message_text(Text_back_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.product_changing_details(CHANGED_INBOUND['product_id']))
+
+
+
+    if call.data=='back_from_manage_products_changing_limit':
+            panel_=v2panel.objects.get(id=PANEL_PK['PanelPK'])
+            Text_back_2=f'📝لیست تمام محصولات پنل <b>({panel_.panel_name})</b> به صورت زیر میباشد'
+            bot.edit_message_text(Text_back_2 , call.message.chat.id ,call.message.message_id ,reply_markup= BotKb.products_list(panel_pk=PANEL_PK['PanelPK']) , parse_mode='HTML')
+               
 
 
 
 
-#> ./management > products > manage-product - changeing product-name -2
-@bot.message_handler(func= lambda message : changing_product_details['product_name'] == True)
+
+
+
+
+#> ./Management > Products > Manage-Product - Changeing (Product-Name , Data-limit , Expire-date , Proudct-cost)
+@bot.message_handler(func= lambda message : CHNAGING_PRODUCT_DETAILS['Product_Name']==True or CHNAGING_PRODUCT_DETAILS['Data_Limit']==True or CHNAGING_PRODUCT_DETAILS['Expire_Date'] or CHNAGING_PRODUCT_DETAILS['Product_Cost'])
 def get_changing_product_details_name(message):
 
-    if changing_product_details['product_name'] == True :
+    #- product name
+    if CHNAGING_PRODUCT_DETAILS['Product_Name']==True :
+        change_product_name(message , bot , CHNAGING_PRODUCT_DETAILS , PRODUCT_ID)
 
-        if message.text == '/cancel' :
-            changing_product_details['product_name'] = False
-            bot.send_message(message.chat.id ,
-                             'to change details tap on them' , 
-                             reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk'])
-                            )
+    #- product data-limit
+    if CHNAGING_PRODUCT_DETAILS['Data_Limit'] == True:
+        change_product_datalimt(message , bot , CHNAGING_PRODUCT_DETAILS , PRODUCT_ID)
 
-        else : 
 
-            if len(message.text) <= 128:
-                 
-                try : 
-                    product_ = products.objects.get(id = product_id['product_pk'])
-                    product_new_name = message.text
-                    product_.product_name = product_new_name
-                    product_.save()
-                    
-                    changing_product_details['product_name'] = False
+    #- product expire-date
+    if CHNAGING_PRODUCT_DETAILS['Expire_Date'] == True:
+        change_prdocut_expiredate(message , bot , CHNAGING_PRODUCT_DETAILS , PRODUCT_ID)
 
-                except Exception as changename_RE :
-                    print(f'Error during changing product name \n\t Error-msg : {changename_RE}')
-                
-                bot.send_message(message.chat.id , 
-                                'to change settings tap to them \n\n prodcut name changed',
-                                reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk'])
-                                )
-                
-
-            else :
-                bot.send_message(message.chat.id ,
-                                 'the product name must be undre 128 character\'s \n\n TRY again')
-
-
-
-
-
-
-#> ./management > product > manage-product - changing data-limit -1
-@bot.callback_query_handler(func = lambda call : call.data.startswith('_data_limit_'))
-def change_product_datalimit_details(call):
-
-    if changing_product_details['enable_changing_product_deatails'] == True :
-
-        if call.data.startswith('_data_limit_') :
-            changing_product_details['data-limit'] = True
-            bot.send_message(call.message.chat.id ,
-                            'send me your new data limit? \n\n to cancel it: /cancel')
-            
-    else :
-        bot.answer_callback_query(call.id , 'pls use back button and try again')
-
-
-
-
-
-#> ./management > product > manage-product - changing data-limit -2
-@bot.message_handler(func = lambda message : changing_product_details['data-limit'] == True)
-def get_changing_product_datalimit_details(message):
-
-    if changing_product_details['data-limit'] == True:
-
-        if message.text =='/cancel':
-            changing_product_details['data-limit'] = False
-            bot.send_message(message.chat.id , 
-                            'to change details tap on them',
-                            reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk'])
-                            )
-
-        else :
-
-            if message.text.isdigit() :
-                data_limit_checker = re.search(r'([0-9]{1,9}|[0-9]{1,9}\.[0-9]{0,2}}})' , message.text)
-
-                if data_limit_checker : 
-
-                    try : 
-                        product_ = products.objects.get(id = product_id['product_pk'])
-                        product_new_datalimit = data_limit_checker.group(0)
-                        product_.data_limit = product_new_datalimit
-                        product_.save()
-                        
-
-                        changing_product_details['data-limit'] = False
-
-                    except Exception as datalimit_RE :
-                        print(f'Error during changing product data limit \n\n Error-msg : {datalimit_RE}')
-
-                    bot.send_message(message.chat.id ,
-                                    'to change settings tap to them \n\n prodcut datalimit changed' ,
-                                    reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk'])
-                                    )
-                    
-                else :
-
-                    bot.send_message(message.chat.id ,
-                                    'the input must be string andin this format : 0.00  \n\n to cancel it : /cancel' ,
-                                    reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk'])
-                                    )  
-                      
-            else :
-                bot.send_message(message.chat.id , 
-                                'please send me digits not strings \n\n to cancel it : /cancel'
-                                )
-                
-
-
-
-
-#> ./management > product > manage-product - changeing expire-date -1 
-@bot.callback_query_handler(func = lambda call : call.data.startswith('ـexpire_date_') )
-def change_product_expiredate_details(call):
-
-    if changing_product_details['enable_changing_product_deatails'] :
-
-        if call.data.startswith('ـexpire_date_') :
-            changing_product_details['expire_date'] = True
-            bot.send_message(call.message.chat.id ,
-                            'send me your new expire date? \n\n to cancel it: /cancel')
-            
-    else :
-
-        bot.answer_callback_query(call.id , 'pls use back button and try again')
-
-
-
-
-#> ./management > product > manage-product - changeing expire-date -2
-@bot.message_handler(func = lambda message : changing_product_details['expire_date'] == True)
-def get_changing_product_expiredate_detalis(message):
- 
-    if changing_product_details['expire_date'] == True:
-
-        if message.text =='/cancel' :
-
-            changing_product_details['expire_date'] = False
-            bot.send_message(message.chat.id , 
-                            'to change details tap on them',
-                            reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk'])
-                            )
-
-        else :
-
-            if message.text.isdigit() :
-
-                try : 
-                    product_ = products.objects.get(id = product_id['product_pk'])
-                    product_new_expiredate = message.text
-                    product_.expire_date = product_new_expiredate
-                    product_.save()
-                    changing_product_details['expire_date'] = False
-
-                except Exception as expiredate_RE :
-                    print(f'Error during changing product data limit \n\n Error-msg : {expiredate_RE}')
-
-                bot.send_message(message.chat.id ,
-                                'to change settings tap to them \n\n prodcut expire date changed' ,
-                                reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk']))
-                
-
-            else : 
-                bot.send_message(message.chat.id , 
-                                'please send me digits not strings \n\n to cancel ir : /cancel'
-                                )                        
-
-
-
-
-
-#> ./management > product > manage-product - changeing expire-date -1 
-@bot.callback_query_handler(func = lambda call : call.data.startswith('_pro_cost_'))
-def change_product_expiredate_details(call) :
-
-    if changing_product_details['enable_changing_product_deatails'] == True :
-
-        if call.data.startswith('_pro_cost_') :
-            changing_product_details['pro_cost'] = True
-            bot.send_message(call.message.chat.id ,
-                            'send me your new product cost? \n\n to cancel it: /cancel'
-                            )
-            
-    else :
-        bot.answer_callback_query(call.id , 'pls use back button and try again')
-
-
-#> ./management > product > manage-product - changeing expire-date -2
-@bot.message_handler(func = lambda message : changing_product_details['pro_cost'] == True)
-def get_changing_product_expiredate_detalis(message):
- 
-    if changing_product_details['pro_cost'] == True:
-
-        if message.text =='/cancel':
-            changing_product_details['pro_cost'] = False
-            bot.send_message(message.chat.id , 
-                            'to change details tap on them',
-                            reply_markup = BotKb.product_changing_details(product_id= product_id['product_pk'])
-                            )
-
-        else :
-            
-            if message.text.isdigit():
-
-                try : 
-                    product_ = products.objects.get(id = product_id['product_pk'])
-                    product_new_pro_cost = message.text
-                    product_.pro_cost = product_new_pro_cost
-                    product_.save()
-                    changing_product_details['pro_cost'] = False
-
-                except Exception as procost_RE :
-                    print(f'Error during changing product pro cost \n\n Error-msg : {procost_RE}')
-
-
-                bot.send_message(message.chat.id ,
-                                'to change settings tap to them \n\n prodcut pro cost changed' ,
-                                reply_markup = BotKb.product_changing_details(product_id = product_id['product_pk']))
-                
-
-            else : 
-                bot.send_message(message.chat.id , 
-                                'please send me digits not strings \n\n to cancel ir : /cancel'
-                                )                        
-
-
-
+    #- product cost
+    if CHNAGING_PRODUCT_DETAILS['Product_Cost'] == True:
+        change_product_cost(message , bot , CHNAGING_PRODUCT_DETAILS , PRODUCT_ID)
 
 
 
@@ -1928,10 +1637,10 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'TeleBot.settings'
 django.setup()
 prrint('Configured')
 
-
+"""
 @bot.callback_query_handler(func= lambda call : call.data)
 def check_call(call):
     print(call.data)
 
-"""
+
 

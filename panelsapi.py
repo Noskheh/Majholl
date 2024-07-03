@@ -1,20 +1,22 @@
-from mainrobot.models import v2panel
+from mainrobot.models import v2panel , products
 import requests , uuid , json , datetime
+
+
+#//TODO add try/exception for api
 
 class marzban:
 
-    def __init__(self , panel_id):
+    def __init__(self , panel_id:int ):
         panel_ = v2panel.objects.get(id = panel_id)
         self.panel_url = panel_.panel_url
         self.panel_username = panel_.panel_username
         self.panel_password = panel_.panel_password
-        self.inbounds = panel_.inbounds_selected
         self.reality_flow = panel_.reality_flow
 
     def get_token_acces(self ):
         panel_url = self.panel_url + '/api/admin/token'
         req = requests.post(panel_url , data={'username':self.panel_username , 'password' :self.panel_password})
-        
+
         if req.status_code == 200:
             Token = json.loads(req.content)['access_token']
             header_info = {'Authorization': f"bearer {Token}"}
@@ -26,7 +28,9 @@ class marzban:
     def add_user(self , username , data_limit , date_expire):
         #- https://marzban:port/api/user
         panel_url = self.panel_url + '/api/user'
-
+        #موقعه خرید محصول باید اینباند ها رو لود کنیم
+         #, product_id:int=None
+        # products_ = products.objects.get()
 
         #proxies 
         current_time = datetime.datetime.now()
