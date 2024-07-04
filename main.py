@@ -8,11 +8,11 @@ from functions.PANEL_managing import *
 from functions.PRODUCTS_managing import *
 from functions.BUY_services import * 
 from functions.checker_ import *
+from BOTTOKEN import TOKEN
 from tools import QRcode_maker
 import panelsapi
-BOT_TOKEN = '6724521362:AAGKk0Fgvm1oP90e1XKZvjZ4thx6D_IZCtI'
 
-bot = telebot.TeleBot(token=BOT_TOKEN , parse_mode= "HTML" , colorful_logs= True)
+bot = telebot.TeleBot(token=TOKEN , parse_mode= "HTML" , colorful_logs= True)
 
 # IMPORTANT #// TODO changin behaivor of call.data's # IMPORTANT
 
