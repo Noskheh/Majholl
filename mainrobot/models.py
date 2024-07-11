@@ -41,7 +41,6 @@ class admins(models.Model):
 
 
 class v2panel(models.Model):
-
     panel_status = models.SmallIntegerField(default=1 , null=False)
     panel_name = models.CharField(max_length = 256 , blank = False)
     panel_url = models.CharField(max_length= 256 , blank = False)
@@ -122,3 +121,14 @@ class payments(models.Model):
 
     class Meta :
         db_table = 'TeleBot_payments'
+
+
+
+class payment_setting(models.Model):
+    bank_name = models.CharField(max_length=56 , null=True , blank= True)
+    back_onwername = models.CharField(max_length=124 , null= True , blank=True)
+    bank_kard = models.BigIntegerField(null=True , blank=True)
+    bank_status = models.SmallIntegerField(default= 1 , null=False)
+
+    class Meta:
+        db_table = 'TeleBot_paymentsetting'

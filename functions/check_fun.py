@@ -2,23 +2,41 @@ from mainrobot.models import v2panel , inovices , users
 from datetime import datetime , timedelta
 
 
-def check_capcity(panel_id = int):
-    try : 
-            panels_ = v2panel.objects.get(id = panel_id)
-        
-            if panels_.all_capcity > 0 :
-                panels_.all_capcity -= 1
-                panels_.sold_capcity += 1
 
-                if panels_.all_capcity == 0:
-                    panels_.capcity_mode = 0
-                
-                panels_.save()
-    
+
+
+
+
+
+
+
+def check_capcity(panel_id = int ):
+    panels_ = v2panel.objects.get(id = panel_id)
+
+    try : 
+            
+                if panels_.all_capcity > 0 :
+                    panels_.all_capcity -= 1
+                    panels_.sold_capcity += 1
+
+
+                    if panels_.all_capcity == 0:
+                        panels_.capcity_mode = 0
+
+                    panels_.save()
     except Exception as error:
         print(f'An error occurred while checking capacity: {error}')
-   
-    
+
+
+
+
+
+
+
+
+
+
+
 
 
 def check_time_passed(inovice_id : int):

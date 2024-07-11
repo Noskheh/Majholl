@@ -1,6 +1,6 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup , InlineKeyboardButton
-from mainrobot.models import v2panel , products , admins , users
+from mainrobot.models import v2panel , products , admins , users , channels
 from typing import Union , List
 import re , panelsapi
 
@@ -48,8 +48,25 @@ class BotkeyBoard:
             keyboard.add(*row_buttons)       
         return keyboard
     
+# -------------------------Channels----------------------------------------------------------------------------------------
+    @staticmethod
+    def load_channels(bot , Userid):
+        keyboard = InlineKeyboardMarkup()
 
+        
+        channels_ = channels.objects.all()
+        channel_list = []
 
+        for i in channels_:
+            user_joined = bot.get_chat_member(i.channel_url or i.channel_id  , Userid).status
+            if user_joined == 'left':
+                channel_url = bot.get_chat(i.channel_id).invite_link
+                button = InlineKeyboardButton(i.channel_name , callback_data=channel_url  , url= channel_url)
+                channel_list.append(button)
+
+        button_start=InlineKeyboardButton('✅جوین شدم' , callback_data='channels_joined')
+        keyboard.add(*channel_list , button_start ,  row_width=1)
+        return keyboard
 
 
 # -------------------------PANEL MANAGEMENT----------------------------------------------------------------------------------------
@@ -236,12 +253,13 @@ class BotkeyBoard:
                 sale_mode='بسته'
             elif i.panel_sale_mode==1:
                 sale_mode='باز'
-
-            remaing_capacity=(int(i.all_capcity) - int(i.sold_capcity)) if i.all_capcity > 0 else 0
+            all_capcity = (int(i.sold_capcity) + int(i.all_capcity)) if i.all_capcity > 0 and i.all_capcity >= i.sold_capcity else 0
+            sold_capcity = i.sold_capcity if i.sold_capcity > 0 else 0
+            remaing_capacity=(int(all_capcity) - int(i.sold_capcity)) if i.all_capcity > 0 else 0
             panel_capcity_buttons=[[(capcity_mode , 'capcity_mode') , ('🎚نوع ظرفیت ' , 'capcity_mode')] ,
                                     [(sale_mode , 'sale_mode') , ('💸حالت فروش' , 'sale_mode')] ,
-                                    [(f"{abs(i.all_capcity)} عدد" , f'all_capcity_{i.all_capcity}') , ('🔋ظرفیت کلی' , f'all_capcity_{i.all_capcity}')] ,
-                                    [(f"{abs(i.sold_capcity)} عدد" , 'sold_capcity') , ('💰ظرفیت فروش رفته' , 'sold_capcity')],
+                                    [(f"{abs(all_capcity)} عدد" , f'all_capcity_{i.all_capcity}') , ('🔋ظرفیت کلی' , f'all_capcity_{i.all_capcity}')] ,
+                                    [(f"{abs(sold_capcity)} عدد" , 'sold_capcity') , ('💰ظرفیت فروش رفته' , 'sold_capcity')],
                                     [(f"{abs(remaing_capacity)} عدد" , 'remaining_capcity') , ('⏳ظرفیت باقی مانده ' , 'remaining_capcity')] ,
                                     [('بازگشت ↪️' , 'back_from_panel_capcity_list')]]
         
@@ -406,7 +424,7 @@ class BotkeyBoard:
                 keyboard.add(next_prev_buttons[0] , next_prev_buttons[1])
         elif page > 1 and len(products_list) < item_peer_page :    
                 keyboard.add(next_prev_buttons[1])
-        #//TODO fix page bug
+
         back_button=InlineKeyboardButton(text ='بازگشت ↪️' , callback_data='back_from_remove_products')  
         keyboard.add( back_button , row_width = 1)
         return keyboard
@@ -591,7 +609,7 @@ class BotkeyBoard:
 
     @staticmethod 
     def payby_in_user_side():
-        pay_options = [('پرداخت با کیف پول' , 'pay_with_wallet') , ('پرداخت کارت به کارت' , 'pay_with_card') , ('back🔙' , 'back_from_payment')]
+        pay_options = [('پرداخت با کیف پول' , 'pay_with_wallet') , ('پرداخت کارت به کارت' , 'pay_with_card') , ('بازگشت به منوی اصلی🔙' , 'back_from_payment')]
         keyboard = InlineKeyboardMarkup()
         for text , data in pay_options :     
             buttons = InlineKeyboardButton(text = text , callback_data = data)

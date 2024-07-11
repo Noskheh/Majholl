@@ -1,27 +1,26 @@
 import telebot
-from telebot.types import InlineKeyboardMarkup , InlineKeyboardButton
+from telebot.types import InlineKeyboardMarkup , InlineKeyboardButton 
 from mainrobot.models import users , admins , v2panel , products , inovices , payments , channels
 from keybuttons import BotkeyBoard as BotKb
-import string , random , re , decimal , json 
-from functions.USERS_checker import *
+import string , random , re , decimal , json  
+from functions.USERS_onstarts import *
 from functions.PANEL_managing import *
 from functions.PRODUCTS_managing import *
 from functions.BUY_services import * 
-from functions.checker_ import *
+from functions.check_fun import *
 from BOTTOKEN import TOKEN
 from tools import QRcode_maker
+from bottext import *
 import panelsapi
 
-bot = telebot.TeleBot(token=TOKEN , parse_mode= "HTML" , colorful_logs= True)
+bot = telebot.TeleBot(token=TOKEN  , parse_mode="HTML" , colorful_logs= True)
 
-# IMPORTANT #// TODO changin behaivor of call.data's # IMPORTANT
+
 
 #//TODO add feature of spliting text msg\'s 
-#//TODO add  enable | disable , also for products
-#//TODO avoid adding products when no panel exists
 #//TODO add /add_panel to the text if theres no plan for first time
 #//TODO add charge wallet message in admin side section
-#//TODO add port section in v2panel , change format of re checker in v2panel
+
 
 
 
@@ -32,21 +31,36 @@ def start_bot(message) :
     user_ = message.from_user 
     CHECKING_USER = CHECK_USER_EXITENCE(user_.id , user_.first_name , user_.last_name , user_.username , 0 )
 
-    if CHECK_USER_CHANNEL(UserId=user_.id , Bot=bot) == True :
+    if FORCE_JOIN_CHANNEL(UserId=user_.id , Bot=bot) == True :
         #- Canceling operations : panels , product
         PANEL_RECEIVING_STATE['Enable_Panel_Adding'] = False
         PRODUCT_RECEIVING_STATE['enable_product_adding'] = False
         CHANGING_PANEL_DETAILS.update({key : False for key in CHANGING_PANEL_DETAILS})
         CHNAGING_PRODUCT_DETAILS['Enable_Changing_Product_Deatails'] = False
+        """  
+        This is temproraliy in here      
+        if message.from_user.id in USERS_BASKET:
+            USERS_BASKET.pop(message.from_user.id)
 
-        bot.send_message(message.chat.id , ' \ خوش امدید \ ' , reply_markup= BotKb.main_menu_in_user_side(message.from_user.id))
+        """        
+        bot.send_message(message.chat.id , welcome_msg , reply_markup= BotKb.main_menu_in_user_side(message.from_user.id))
 
     else :
-        channel = channels.objects.all()
-        for i in channel:
-            channel_url = bot.get_chat(i.channel_id).username
-        Text = f'لطفا در کانال ما جوین شوید \n\n channel : @{channel_url} \n\n و سپس /start را وارد کنید '
-        bot.send_message(message.chat.id , text=Text )
+        bot.send_message(message.chat.id , text=force_channel_join_msg, reply_markup=BotKb.load_channels(bot , user_.id))
+
+
+
+#- handles all incoming channels_joined call.data 
+@bot.callback_query_handler(func=lambda call : call.data=='channels_joined')
+def channels_joined(call):
+    if call.data=='channels_joined':
+        if FORCE_JOIN_CHANNEL(call.from_user.id , bot) == True:
+            bot.edit_message_text(welcome_msg , call.message.chat.id , call.message.message_id , reply_markup= BotKb.main_menu_in_user_side(call.message.from_user.id))
+        else:
+            Text_1='⚠️شما هنوز در چنل های ما جوین نشده اید⚠️'
+            bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.load_channels(bot , call.from_user.id))
+
+
 
 
 
@@ -55,257 +69,138 @@ def start_bot(message) :
 #//TODO edit all text in bot.send messsage
 #> ./buy_services : selecting all plans if olny have on panel
 
-    
+def create_product_entry():
+    return {
+        'panel_number': '',
+        'product_id': 0,
+        'product_name': '',
+        'data_limit': '',
+        'expire_date': '',
+        'pro_cost': '',
+        'withcapcity': 0,
+        'get_username': False,
+        'usernameforacc': '',
+        'statement': []}
 
+USERS_BASKET = {}
 
-number_of_panel_loaded_data = {'one_panel' : False , 'one_panel_id' : int ,
-                                'two_more_panels' : False , 'two_panel_id' : int}
+NUMBER_OF_PANEL_LOADED={'one_panel':False , 'one_panel_id':int ,
+                        'two_more_panels':False , 'two_panel_id':int}
 
-@bot.callback_query_handler(func = lambda call : call.data == 'buy_service')
-def handler_buy_service_one_panel(call) :   
-
+@bot.callback_query_handler(func=lambda call:call.data in ['buy_service' , 'back_mainmenu_from_one_panels' ])
+def handler_buy_service_one_panel(call):   
     panels_ = v2panel.objects.all()
-    count_panels = []
-    panels_info_set = []
+    panel_id = [i.id for i in panels_]
+    #check user is joined or not
+    if FORCE_JOIN_CHANNEL(call.from_user.id , bot) == True :
 
-    for i in panels_ :
-        count_panels.append(i.id)
+        #check received call.data and panels count
+        if  call.data == 'buy_service' and 0 < panels_.count() < 2  : 
+            if plans_loading_for_one_panel() == 'panel_disable' :
+                bot.send_message(call.message.chat.id , '⌛️پنل در حال بروزرسانی میباشد . لطفا بعدا مراجعه فرمایید')
+            else : 
+                if isinstance(plans_loading_for_one_panel() , InlineKeyboardMarkup):
+                    bot.edit_message_text(buy_service_section_product_msg , call.message.chat.id , call.message.message_id , reply_markup = plans_loading_for_one_panel())      
 
+                    NUMBER_OF_PANEL_LOADED['one_panel'] = True
+                    NUMBER_OF_PANEL_LOADED['one_panel_id'] = panel_id[-1]
 
-    if  call.data == 'buy_service' and 0 < len(count_panels) < 2  : 
-        
-        if plans_loading_for_one_panel() == 'panel_disable' :
-            bot.send_message(call.message.chat.id , 'پنل  در حال بروزرسانی میباشند لطفا بعدا مراجعه فرمایید')
+                    if call.from_user.id not in USERS_BASKET:
+                            USERS_BASKET[call.from_user.id] = create_product_entry()
+                    USERS_BASKET[call.from_user.id]['panel_number']= panel_id[-1]
 
-        else : 
+            if plans_loading_for_one_panel() == 'sale_closed' :
+                bot.send_message(call.message.chat.id , '⛔️فروش سرویس بسته میباشد ، بعدا مراجعه فرمایید')
 
-            if isinstance(plans_loading_for_one_panel() , InlineKeyboardMarkup):
-                bot.edit_message_text('select you\'r wish plan?', call.message.chat.id , call.message.message_id , reply_markup = plans_loading_for_one_panel())      
-                number_of_panel_loaded_data['one_panel'] = True
-                number_of_panel_loaded_data['one_panel_id'] = max(count_panels)
-                panel_product_selected['panel_number'] =  max(count_panels)
+            if plans_loading_for_one_panel() == 'sale_open_no_zarfit' :
+                bot.send_message(call.message.chat.id , '🪫ظرفیت فروش به اتمام رسیده است . بعدا مراجعه فرمایید')
 
-
-        if plans_loading_for_one_panel() == 'sale_closed' :
-            bot.send_message(call.message.chat.id , 'فروش بسته میباشد بعدا مراجعه فرمایید')
-
-
-        if plans_loading_for_one_panel() == 'sale_open_no_zarfit' or plans_loading_for_one_panel() ==  'sale_zrafit_no_zarfit' :
-            bot.send_message(call.message.chat.id , 'ظرفیت فروش به اتمام رسیده است بعد مراجعه فرمایید')
-
-
-        if plans_loading_for_one_panel() == 'no_panel_product' : 
-            bot.send_message(call.message.chat.id , 'هیچ سروری یا محصولی برای ارائه وجود ندارد' )
+            if plans_loading_for_one_panel() == 'no_panel_product' : 
+                bot.send_message(call.message.chat.id , '‼️متاسفیم ، هنوز هیچ سرور یا محصولی برای ارائه وجود ندارد' )
 
 
-
-        
-    if call.data == 'buy_service' and len(count_panels) >= 2 :
+            
+        if call.data == 'buy_service' and panels_.count() >= 2 :
             keyboard = InlineKeyboardMarkup()
             for i in panels_ :
-                button = InlineKeyboardButton(text =  i.panel_name , callback_data = 'panel_pk_' + str(i.id) )
+                button = InlineKeyboardButton(text=i.panel_name , callback_data=f'TBSpanel_pk_{str(i.id)}')
                 keyboard.add(button)
-            button_back_2more = InlineKeyboardButton(text = 'بازگشت🔙' , callback_data = 'back_to_main_menu_for_2more_panels')
-            keyboard.add( button_back_2more)
-            bot.edit_message_text('which panel do you want?' , call.message.chat.id ,call.message.message_id , reply_markup = keyboard)
+            button_back_2more = InlineKeyboardButton(text='بازگشت به منو اصلی🔙' , callback_data='back_main_menu_from_2more_panels')
+            keyboard.add(button_back_2more)
+            bot.edit_message_text(buy_service_section_choosing_panel_msg , call.message.chat.id , call.message.message_id , reply_markup=keyboard)
+
+
+    else :
+        bot.send_message(call.message.chat.id , text=force_channel_join_msg, reply_markup=BotKb.load_channels(bot , call.from_user.id))
+
+
+        #-back - buttons
+    if call.data == 'back_mainmenu_from_one_panels' : 
+         bot.edit_message_text( welcome_msg , call.message.chat.id , call.message.message_id , reply_markup = BotKb.main_menu_in_user_side(call.from_user.id))
+        
 
 
 
 
 
 #> ./buy service : two panels buying
-@bot.callback_query_handler(func = lambda call : call.data.startswith('panel_pk_'))
+@bot.callback_query_handler(func = lambda call : call.data.startswith('TBSpanel_pk_') or  call.data in ['back_main_menu_from_2more_panels' , 'back_to_main_menu_for_two_panels'])
 def handle_buy_service_two_panel(call):
 
-    state_panel = plans_loading_for_two_more_panel(panel_pk= call.data.split('_')[-1])
+
+    #check user is joined or not
+    if FORCE_JOIN_CHANNEL(call.from_user.id , bot) == True :
+
+        if call.data.startswith('TBSpanel_pk_') :
+            call_data = call.data.split('_')
+            state_panel = plans_loading_for_two_more_panel(panel_pk= call_data[-1])
+            if state_panel == 'panel_disable':
+                bot.send_message(call.message.chat.id , '⌛️پنل در حال بروزرسانی میباشد . لطفا بعدا مراجعه فرمایید')
+            
+            else :
+                if isinstance(state_panel , InlineKeyboardMarkup) :
+                    bot.edit_message_text(buy_service_section_product_msg , call.message.chat.id , call.message.message_id , reply_markup = state_panel)
+                    NUMBER_OF_PANEL_LOADED['two_more_panels'] = True
+                    NUMBER_OF_PANEL_LOADED['two_panel_id'] = call.data.split('_')[-1]
+                    if call.from_user.id not in USERS_BASKET:
+                        USERS_BASKET[call.from_user.id] = create_product_entry()
+
+                    USERS_BASKET[call.from_user.id]['panel_number'] =  call.data.split('_')[-1]
 
 
-    if call.data.startswith('panel_pk_') :
-        
-        if state_panel == 'panel_disable':
-            bot.send_message(call.message.chat.id , 'پنل  در حال بروزرسانی میباشند لطفا بعدا مراجعه فرمایید')
-        
-        else :
+            if state_panel == 'sale_closed':
+                bot.send_message(call.message.chat.id , '⛔️فروش سرویس بسته میباشد ، بعدا مراجعه فرمایید')
 
-            if  isinstance(state_panel , InlineKeyboardMarkup) :
-                bot.edit_message_text('which products do you want ?' , call.message.chat.id , call.message.message_id , reply_markup = state_panel)
-                number_of_panel_loaded_data['two_more_panels'] = True
-                number_of_panel_loaded_data['two_panel_id'] = call.data.split('_')[-1]
-                panel_product_selected['panel_number'] = call.data.split('_')[-1]
+            if  state_panel == 'sale_open_no_capcity':
+                bot.send_message(call.message.chat.id , '🪫ظرفیت فروش به اتمام رسیده است . بعدا مراجعه فرمایید')
 
-        if state_panel == 'sale_closed':
-            bot.send_message(call.message.chat.id , 'فروش بسته میباشد بعدا مراجعه فرمایید')
-
-
-        if (state_panel =='sale_zarfit_no_capcity') or (state_panel == 'sale_open_no_capcity')  :
-            bot.send_message(call.message.chat.id , 'ظرفیت فروش به اتمام رسیده است بعد مراجعه فرمایید')
-
-
-        if state_panel == 'no_products':
-            bot.send_message(call.message.chat.id , 'هیچ محصولی برای ارائه وجود ندارد' )
-
-
-
-
-
-
-
+            if state_panel == 'no_products':
+                bot.send_message(call.message.chat.id , '‼️متاسفیم ، هنوز هیچ سرور یا محصولی برای ارائه وجود ندارد')
+    else :
+        bot.send_message(call.message.chat.id , text=force_channel_join_msg, reply_markup=BotKb.load_channels(bot , call.from_user.id))
 
 
 
-panel_product_selected = {'panel_number' : '' , 
-                          'product_name' : '' ,
-                          'data_limit' : '' , 
-                          'expire_date' : '' , 
-                          'pro_cost' : '' ,
-                          'withcapcity' : int ,
-                          'get_username' : False ,
-                          'usernameforacc'  : str ,
-                          'statement' : []
-                        }
+    if call.data in  ['back_main_menu_from_2more_panels','back_to_main_menu_for_two_panels']:
+        bot.edit_message_text(welcome_msg, call.message.chat.id , call.message.message_id , reply_markup = BotKb.main_menu_in_user_side(call.from_user.id))
+
+
+
+
+
+
+
 
 #> ./buy_services > selecting products plans
 @bot.callback_query_handler(func = lambda call : call.data.startswith('buyservice_'))
 def handle_buyService_select_proplan(call) :
     
     if call.data.startswith('buyservice_') :
-        for i in products.objects.filter(id = call.data.split('_')[1]):
-            panel_product_selected['product_name'] = i.product_name
-            panel_product_selected['data_limit'] = i.data_limit
-            panel_product_selected['expire_date'] = i.expire_date
-            panel_product_selected['pro_cost'] = i.pro_cost
-
-        panel_product_selected['statement'] = [call.data.split('_')[2] , call.data.split('_')[3] , call.data.split('_')[4]]
-           
-        text_ = f"""محصول شما انتخاب شد ✅ 
-        نام محصول : {panel_product_selected['product_name']}
-        حجم محصول : {panel_product_selected['data_limit']} گیگ
-        زمان محصول : {panel_product_selected['expire_date']} روزه 
-        قیمت محصول : {format(panel_product_selected['pro_cost'] , ',')} تومان
-        در صورت تایید گزینه تایید را زده و در صورت عدم تایید گزینه بازگشت را بزنید
-        """
-
-        keyboard = InlineKeyboardMarkup()
-        button_1 = InlineKeyboardButton('✅ تایید محصول ' , callback_data= 'verify_product')
-        button_2 = InlineKeyboardButton('↩️ بازگشت ' , callback_data = 'back_from_verfying')
-        keyboard.add(button_1 , button_2 , row_width = 2)
-        bot.edit_message_text(text = text_  ,chat_id =  call.message.chat.id , message_id = call.message.message_id , reply_markup = keyboard)
-
-
-
-
-
-
-
-#> ./buy_services > proccess selected product plan 
-@bot.callback_query_handler(func = lambda call : call.data == 'verify_product' or call.data == 'pay_with_wallet' or call.data == 'pay_with_card')
-def handle_selected_products(call) : 
-
-
-    if call.data == 'verify_product' :
-        panel_product_selected['get_username'] = True
-        bot.edit_message_text('لطفا یک نام کاربری انتخاب نمایید' , call.message.chat.id , call.message.message_id )
-
-
-
-
-    if call.data == 'pay_with_wallet':
-        user_ = users.objects.get(user_id = call.from_user.id)
-        product_price = panel_product_selected['pro_cost']
-
-        if user_.user_wallet < product_price :
-            bot.send_message(call.message.chat.id , 'not enough found ')
-
-        elif user_.user_wallet >= product_price :
-            new_wallet = (user_.user_wallet) - decimal.Decimal(product_price)
-            
-            try :
-                user_.user_wallet = new_wallet
-                user_.save()
-
-                if number_of_panel_loaded_data['one_panel'] == True :
-                    if  ('open' and 'withcapcity') or ('zarfit' and 'withcapcity') in panel_product_selected['statement'] :
-                        check_capcity(number_of_panel_loaded_data['one_panel_id'])
-                else :
-                    if number_of_panel_loaded_data['two_more_panels'] == True :
-                        if  ('open' and 'withcapcity') or ('zarfit' and 'withcapcity') in panel_product_selected['statement']:
-                            check_capcity(number_of_panel_loaded_data['two_panel_id'])
-
-            except Exception as error_1:
-                print(f'an error eccured  when updating user wallet: \n\t {error_1}')
-            
-
-            
-            panel_ = v2panel.objects.get(id = panel_product_selected['panel_number'] )
-
-            users_ = users.objects.get(user_id = call.from_user.id)
-
-            inovivces_ = create_inovices(user_id= users_ ,
-                                        user_username=call.from_user.username ,
-                                        panel_name = panel_.panel_name ,
-                                        product_name= panel_product_selected['product_name'],
-                                        data_limit= panel_product_selected['data_limit'],
-                                        expire_date= panel_product_selected['expire_date'] ,
-                                        pro_cost= panel_product_selected['pro_cost'], 
-                                        config_name = panel_product_selected['usernameforacc'] ,
-                                        paid_status = 1 , # 0 > unpaid , 1 > paid , 2 > waiting  , 3 > disagree 
-                                        paid_mode= 'wlt')
-            
-            inovivces2_ = inovices.objects.filter(user_id =users_).latest('created_date')
-            payments_ = payments.objects.create(user_id = users_ , amount = panel_product_selected['pro_cost'] ,payment_stauts = 'accepted' , inovice_id = inovivces2_)
-            send_request = panelsapi.marzban(panel_product_selected['panel_number']).add_user(panel_product_selected['usernameforacc'] , float(panel_product_selected['data_limit']) ,panel_product_selected['expire_date'])
-            bot.edit_message_text('paied successfully \n\t waiting ' , call.message.chat.id , call.message.message_id)
-            how_to_send(send_request , panel_product_selected['panel_number'] , bot , call)
-            
-        
-
-
-
-            
-        
-
-
-
-
-
-
-    if call.data == 'pay_with_card':
-        #//TODO add a table for storing karts number (payment setting)
-        text_ = f"""
-        برای تکمیل خرید خود و دریافت لینک اشتراک 
-
-        مبلغ : {format(panel_product_selected['pro_cost'], ',')} تومان 
-        به این شماره کارت واریز کرده و سپس فیش واریزی را همین جا ارسال کنید
-
-        *************************
-        شماره کارت :‌
-        به نام : 
-        *************************
-        ⚠️ لطفا از اسپم کردن پرهیز نمایید
-        ⚠️ از ارسال رسید فیک اجتناب فرمایید 
-        ⚠️ هرگونه واریزی اشتباه بر عهده شخص میباشد
-
-        """ 
-
-        panel_id = products.objects.get(product_name = panel_product_selected['product_name']).panel_id
-        panel_name = v2panel.objects.get(id = panel_id ).panel_name
-        users_ = users.objects.get(user_id = call.from_user.id  )
-        inovivces_ = create_inovices(user_id= users_,
-                                        user_username=call.from_user.username ,
-                                        panel_name = panel_name ,
-                                        product_name= panel_product_selected['product_name'],
-                                        data_limit= panel_product_selected['data_limit'],
-                                        expire_date= panel_product_selected['expire_date'] ,
-                                        pro_cost= panel_product_selected['pro_cost'], 
-                                        config_name = panel_product_selected['usernameforacc'] ,
-                                        paid_status= 2 , # 0 > unpaid , 1 > paid , 2 > waiting  , 3 > disagree
-                                        paid_mode= 'kbk')
-
-        user_fish['user_id'] = call.from_user.id 
-        user_fish['fish_send'] = True
-        bot.send_message(chat_id = call.message.chat.id , text = text_ )
-
-
+        USERS_BASKET[call.from_user.id]['get_username'] = True
+        call_data = call.data.split("_")
+        USERS_BASKET[call.from_user.id]['product_id'] = call_data[1]
+        USERS_BASKET[call.from_user.id]['statement'] = [call_data[2] , call_data[3] , call_data[4]] 
+        bot.edit_message_text(buy_service_section_choosing_username_msg , call.message.chat.id , call.message.message_id)
 
 
 
@@ -314,13 +209,97 @@ def handle_selected_products(call) :
 
 
 #> ./buy_services > get user username 
-@bot.message_handler(func= lambda message : panel_product_selected['get_username'] == True)
+@bot.message_handler(func=lambda message:(message.from_user.id in USERS_BASKET and len(USERS_BASKET) != 0  and USERS_BASKET[message.from_user.id]['get_username']==True))
 def get_username_for_config_name(message):
-    if panel_product_selected['get_username'] == True:
-        panel_product_selected['usernameforacc'] = f'{panel_product_selected["panel_number"]}_' + message.text
-        panel_product_selected['get_username'] = False
-        bot.send_message(message.chat.id  ,'لطفا یک روش پرداخت را انتخاب کنید' , reply_markup= BotKb.payby_in_user_side())
-        
+    
+    if USERS_BASKET[message.from_user.id]['get_username']==True:
+
+        pattern = re.fullmatch(r'(\w|\d|\_)+', message.text)
+        if pattern:
+            users_in_panel=panelsapi.marzban(USERS_BASKET[message.from_user.id]['panel_number']).get_all_users()
+            
+            if users_in_panel['total'] == 0:
+                USERS_BASKET[message.from_user.id]['usernameforacc'] = f'1_{message.text}'
+
+
+            elif users_in_panel['total'] ==1 :
+                for i in users_in_panel['users']:
+                    if '_' in i['username']:
+                        new_number = i['username'].split("_")[0]
+                        if new_number.isdigit() :
+                            USERS_BASKET[message.from_user.id]['usernameforacc'] = f'{int(new_number) + 1}_{message.text}'
+
+
+            elif users_in_panel['total'] >1:
+                users_username=  [i['username'] for i in users_in_panel['users']]
+                new_number = users_username[-1].split("_")[0]
+                if new_number.isdigit() : 
+                    USERS_BASKET[message.from_user.id]['usernameforacc'] = f'{int(new_number) + 1}_{message.text}'
+
+
+            USERS_BASKET[message.from_user.id] ['get_username'] = False
+
+            call_data = USERS_BASKET[message.from_user.id]['product_id']
+            product_ = products.objects.get(id = call_data)
+            USERS_BASKET[message.from_user.id] ['product_name'] = product_.product_name
+            USERS_BASKET[message.from_user.id] ['data_limit'] = product_.data_limit
+            USERS_BASKET[message.from_user.id] ['expire_date'] = product_.expire_date
+            USERS_BASKET[message.from_user.id] ['pro_cost'] = product_.pro_cost
+
+            keyboard = InlineKeyboardMarkup()
+            button_1 = InlineKeyboardButton('✅ تایید محصول ' , callback_data= 'verify_product')
+            button_2 = InlineKeyboardButton('↩️ بازگشت ' , callback_data = 'back_from_verfying')
+ 
+            keyboard.add(button_1 , button_2 , row_width = 2)
+            bot.send_message(message.chat.id , product_info_msg(USERS_BASKET[message.from_user.id]) , reply_markup=keyboard)
+        else : 
+            bot.send_message(message.chat.id , '⚠️نام کاربری انتخابی اشتباه است لطفامجدد امتحان فرمایید ')
+
+
+
+
+
+
+#> ./buy_services > proccess selected product plan 
+@bot.callback_query_handler(func = lambda call : call.data in ['verify_product' , 'pay_with_wallet' , 'pay_with_card' , 'back_from_verfying' , 'back_from_payment'] )
+def handle_selected_products(call) : 
+
+    if call.data == 'verify_product' :
+
+        bot.edit_message_text('⚪️ یک روش پرداخت را انتخاب نمایید' , call.message.chat.id , call.message.message_id , reply_markup=BotKb.payby_in_user_side()) 
+
+
+
+    #pay wallet
+    if call.data == 'pay_with_wallet':
+        req =pay_with_wallet(call , bot , USERS_BASKET , NUMBER_OF_PANEL_LOADED)
+
+        if req =='requset_false'  :
+            print(f'requset is failed related to the api')
+        elif req is None:
+            print('due to isuffinet')
+        else :
+            bot.edit_message_text(paied_msg , call.message.chat.id , call.message.message_id)
+            how_to_send(req, int(USERS_BASKET[call.from_user.id]['panel_number']) , bot , call.from_user.id)
+            USERS_BASKET.pop(call.from_user.id)
+
+    #pay card
+    if call.data == 'pay_with_card':
+        pay_with_card(call , bot , USERS_BASKET , USER_PAYCARD_FISH)
+
+
+    #back - buttons
+    if call.data == 'back_from_verfying':
+        bot.edit_message_text(welcome_msg , call.message.chat.id , call.message.message_id , reply_markup = BotKb.main_menu_in_user_side(call.from_user.id))
+        bot.answer_callback_query(call.id , 'ادامه خرید محصول لغو شد')
+        USERS_BASKET.pop(call.from_user.id)
+
+
+
+    if call.data == 'back_from_payment':
+        bot.edit_message_text(welcome_msg , call.message.chat.id , call.message.message_id , reply_markup= BotKb.main_menu_in_user_side(call.from_user.id))
+        bot.answer_callback_query(call.id , 'پرداخت لغو شد')
+        USERS_BASKET.pop(call.from_user.id)
 
 
 
@@ -328,10 +307,12 @@ def get_username_for_config_name(message):
 
 
 
+USER_PAYCARD_FISH = {}
 
-user_fish = {'user_id' : int , 'fish_send' : False}
+
+
 # ./buy_service > seding fish section
-@bot.message_handler(func = lambda message :  user_fish['fish_send'] == True , content_types=['photo'] )
+@bot.message_handler(func = lambda message : (message.from_user.id in USER_PAYCARD_FISH and len(USER_PAYCARD_FISH) > 0  and USER_PAYCARD_FISH[message.from_user.id]['fish_send']) , content_types=['photo'])
 def getting_fish_image(message):
 
     users_ = users.objects.get(user_id = message.from_user.id)
@@ -340,44 +321,28 @@ def getting_fish_image(message):
     
     all_user_kbk_inovices = []
 
-    if user_fish['fish_send'] == True :
-        for i in inovices_.filter(paid_status=2):
-            if i.user_id == users_ and inovices_.filter(paid_status=2).order_by('created_date') and inovices_.filter(paid_mode = 'kbk').order_by('created_date'):
-                all_user_kbk_inovices.append(i.id)
+    if USER_PAYCARD_FISH[message.from_user.id]['fish_send'] == True :
+        for i in inovices_.filter(user_id = users_ , paid_status=2 , paid_mode='kbk').order_by('created_date') : #paid_status =2  / waiting for paying
+
+            all_user_kbk_inovices.append(i.id)
 
 
         
         if check_time_passed(all_user_kbk_inovices[-1]) == 'time_passed':
-            update_inovice_status = inovices_.get(id = all_user_kbk_inovices[-1])
-            update_inovice_status.paid_status = 0
+            update_inovice_status = inovices_.get(id = int(all_user_kbk_inovices[-1]))   
+            update_inovice_status.paid_status = 0 # paid_status = 0 / unpaid due to passing time
             update_inovice_status.save()
-            
-            bot.send_message(message.chat.id , 'این صورت حساب باطل شده است مجدد صادر فرمایید')
-
-
+            bot.send_message(message.chat.id , inovice_time_passed_msg)
 
         else :
-            panel_name = v2panel.objects.get(id = number_of_panel_loaded_data['two_panel_id']).panel_name
-            user_info = users.objects.get(user_id = message.from_user.id)
-            
-            caption_text = f"""
-            درخواست خرید ✅:
- ---------------------------------------------------------------------------
-┌─نام کاربر : {user_info.first_name } {'' if not user_info.last_name else user_info.last_name}
-│ایدی عددی کاربر : {user_info.user_id}
-│ایدی تلگرام : {user_info.username}
-│موجودی کیف پول : {format(user_info.user_wallet, ",")} تومان
-│میلغ خرید : {panel_product_selected['pro_cost']}
-│نام محصول :‌ {panel_product_selected['product_name']}
-└─نام سرور : {panel_name}
-            """
-
+            panel_id = NUMBER_OF_PANEL_LOADED['one_panel_id'] if NUMBER_OF_PANEL_LOADED['one_panel'] == True else NUMBER_OF_PANEL_LOADED['two_panel_id']
+            panel_name = v2panel.objects.get(id = panel_id).panel_name
+            user_info = users.objects.get(user_id = message.from_user.id)  
             for i in admins_:
-                    bot.send_photo( i.user_id , message.photo[-1].file_id , caption = caption_text , reply_markup= BotKb.agree_or_disagree(message.from_user.id) )
-            
-            bot.send_message(message.chat.id , 'درخواست شما برای ادمین صادر شد در صورت تایید به اطلاع شما خواهد رسید')
-        user_fish.update({'user_id': int, 'fish_send': False})
-        taaeed_ya_rad['status'] = True
+                    bot.send_photo(i.user_id , message.photo[-1].file_id , caption = send_user_buy_request_to_admins(USERS_BASKET[message.from_user.id] ,user_info , panel_name ) , reply_markup= BotKb.agree_or_disagree(message.from_user.id))
+            bot.send_message(message.chat.id ,send_success_msg_to_user)
+
+        USER_PAYCARD_FISH[message.from_user.id]['accpet_or_reject'] = True
 
 
 
@@ -385,138 +350,86 @@ def getting_fish_image(message):
 
 
 
-taaeed_ya_rad = {'status':False }
+
+
+
 @bot.callback_query_handler(func = lambda call : call.data.startswith('agree_') or call.data.startswith('disagree_') )
 def agree_or_disagree_kbk_payment(call):
     
     call_data = call.data.split('_')
-    print(call_data)
-
-    
-    if call.data.startswith('agree_')  and taaeed_ya_rad['status'] == True:
+    print(USERS_BASKET)
+    user_basket = USERS_BASKET[int(call_data[1])]
+    if call.data.startswith('agree_')  and (int(call_data[1]) in USER_PAYCARD_FISH and len(USER_PAYCARD_FISH) >=1 and  USER_PAYCARD_FISH[int(call_data[1])]['accpet_or_reject']) == True:
 
                 inovices_ = inovices.objects.all().filter(user_id=call_data[1]).order_by('created_date').last()
                 inovices_.paid_status = 1
                 inovices_.save()
-                # sending config from panel
+
 
                 users_ = users.objects.get(user_id = call_data[1])
                 inovivces2_ = inovices.objects.filter(user_id =users_).latest('created_date')
-                payments_ = payments.objects.create(user_id = users_ , amount = panel_product_selected['pro_cost'] ,payment_stauts = 'accepted' , inovice_id = inovivces2_)
+                payments_ = payments.objects.create(user_id = users_ , amount = user_basket['pro_cost']  ,payment_stauts = 'accepted' , inovice_id = inovivces2_)
 
-
-                if number_of_panel_loaded_data['one_panel'] == True :
-                        if  ('open' and 'withcapcity') or ('zarfit' and 'withcapcity') in panel_product_selected['statement'] :
-                            check_capcity(number_of_panel_loaded_data['one_panel_id'])
+                if NUMBER_OF_PANEL_LOADED['one_panel'] == True :
+                        if  ('open' and 'withcapcity') or ('zarfit' and 'withcapcity') in user_basket['statement'] :
+                            check_capcity(NUMBER_OF_PANEL_LOADED['one_panel_id'])
                 else :
-                    if number_of_panel_loaded_data['two_more_panels'] == True :
-                        if  ('open' and 'withcapcity') or ('zarfit' and 'withcapcity') in panel_product_selected['statement']:
-                            check_capcity(number_of_panel_loaded_data['two_panel_id'])
+                    if NUMBER_OF_PANEL_LOADED['two_more_panels'] == True :
+                        if  ('open' and 'withcapcity') or ('zarfit' and 'withcapcity') in user_basket['statement']:
+                            check_capcity(NUMBER_OF_PANEL_LOADED['two_panel_id'])
                 
-
-                bot.send_message(call.message.chat.id , 'پرداخت انجام شد')
-                bot.send_message(call.data.split('_')[1] , 'پرداخت شما با موفقیت انجام شد \n YOUR CONFIG')
-                send_request = panelsapi.marzban(panel_product_selected['panel_number']).add_user(panel_product_selected['usernameforacc'] , float(panel_product_selected['data_limit']) ,panel_product_selected['expire_date'])
-                how_to_send(send_request , panel_product_selected['panel_number'] , bot , call)
-                taaeed_ya_rad['status'] = False
-
-
+                bot.send_message(call.message.chat.id , f'درخواست پرداخت یوزر : {call.message.chat.id} انجام شد')
+                bot.send_message(call.data.split('_')[1] , paied_msg)
+                send_request = panelsapi.marzban(user_basket['panel_number']).add_user(user_basket['usernameforacc'] , user_basket['product_id'] )
+                how_to_send(send_request , user_basket['panel_number'] , bot , int(call_data[1]))
+                USERS_BASKET.pop(int(call_data[1]))
+                USER_PAYCARD_FISH.pop(int(call_data[1]))
 
 
-    if call.data.startswith('disagree_')  and taaeed_ya_rad['status'] == True:
+
+
+    if call.data.startswith('disagree_')  and (int(call_data[1]) in USER_PAYCARD_FISH and len(USER_PAYCARD_FISH) >=1 and  USER_PAYCARD_FISH[int(call_data[1])]['accpet_or_reject']) == True:
             users_ = users.objects.get(user_id = call_data[1])
-
             inovices_ = inovices.objects.all().filter(user_id=users_).order_by('created_date').last()
             inovices_.paid_status = 3
             inovices_.save()
 
             inovivces2_ = inovices.objects.filter(user_id =users_).latest('created_date')
-            payments_ = payments.objects.create(user_id = users_ , amount = panel_product_selected['pro_cost'] ,payment_stauts = 'declined' , inovice_id = inovivces2_)
+            payments_ = payments.objects.create(user_id = users_ , amount = user_basket['pro_cost'] ,payment_stauts = 'declined' , inovice_id = inovivces2_)
 
             bot.send_message(call.message.chat.id , 'علت رد پرداخت را ارسال کنید')
-            payments_decline_1['userid'] = call_data[1]
-            payments_decline_1['reason'] = True
-            taaeed_ya_rad['status'] = False
-            
+            if int(call_data[1])  not in payment_decline_reason_2 :
+                payment_decline_reason_2[int(call_data[1])] = payment_decline_reason_create()
+
+            payment_decline_reason_2[int(call_data[1])]['reason'] = True
+            payment_decline_reason_2[int(call_data[1])]['user_id'] = int(call_data[1])
+            USER_PAYCARD_FISH[int(call_data[1])]['accpet_or_reject'] = False
 
 
 
+def payment_decline_reason_create():
+    payment_decline_reason_2 = {'reason' : False  , 'user_id' : int}
+    
+    return payment_decline_reason_2
 
-payments_decline_1 = {'reason' : False  , 'userid' : int}
+payment_decline_reason_2={}
+
+
+
 # ./buy services > disagree of fish : getting reason
-@bot.message_handler(func= lambda message : payments_decline_1['reason'] == True)
+@bot.message_handler(func= lambda message : (message.from_user.id in payment_decline_reason_2 and len(payment_decline_reason_2) >=1 and payment_decline_reason_2[message.from_user.id]['reason'] == True))
 def get_decline_reason(message):
     
-    user_id = payments_decline_1['userid']
-    if payments_decline_1['reason'] == True : 
-        payments_ = payments.objects.filter(user_id = payments_decline_1['userid']).latest('payment_time')
+    user_id = payment_decline_reason_2[message.from_user.id]['user_id']
+    if payment_decline_reason_2[message.from_user.id]['reason'] == True : 
+        payments_ = payments.objects.filter(user_id = payment_decline_reason_2[message.from_user.id]['user_id']).latest('payment_time')
         payments_.decline_reason = message.text
         payments_.save()
         bot.send_message(user_id , f'درخواست شما رد شد \n\n علت :‌ {message.text}')
-        bot.send_message(message.chat.id , 'درخواست پرداخت رد شد')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#> ./buy_services > handle all back buttons 
-@bot.callback_query_handler(func = lambda call : call.data =='back_to_main_menu_for_two_panels' or call.data == 'back_to_main_menu_for_2more_panels' or call.data == 'back_to_main_menu_for_one_panels' or call.data == 'back_from_verfying' or call.data =='back_from_payment')
-def handling_all_back_buttons(call) :
-
-    if call.data == 'back_to_main_menu_for_one_panels' : 
-        bot.edit_message_text( 'Welcome' , call.message.chat.id , call.message.message_id , reply_markup = BotKb.main_menu_in_user_side(call.from_user.id) )
-    
-
-
-    if call.data == 'back_from_verfying':
-        bot.edit_message_text('canceled // welcome' , call.message.chat.id , call.message.message_id , reply_markup = BotKb.main_menu_in_user_side(call.from_user.id))
-        bot.answer_callback_query(call.id , 'CANCELED')
-
-
-    if call.data == 'back_from_payment':
-        bot.edit_message_text('payment canceled' , call.message.chat.id , call.message.message_id , reply_markup= BotKb.main_menu_in_user_side(call.from_user.id))
-        bot.answer_callback_query(call.id , 'CANCELED')
-
-
-    if call.data == 'back_to_main_menu_for_2more_panels':
-        bot.edit_message_text('welcome', call.message.chat.id , call.message.message_id , reply_markup = BotKb.main_menu_in_user_side(call.from_user.id))
-
-
-
-    if call.data == 'back_to_main_menu_for_two_panels':
-            keyboard = InlineKeyboardMarkup()
-            for i in v2panel.objects.all() :
-                button = InlineKeyboardButton(text =  i.panel_name , callback_data = 'panel_pk_' + str(i.id) )
-                keyboard.add(button)
-            button_back_2more = InlineKeyboardButton(text = 'back🔙' , callback_data = 'back_to_main_menu_for_2more_panels')
-            keyboard.add( button_back_2more)
-            bot.edit_message_text('which panel do you want?' , call.message.chat.id ,call.message.message_id , reply_markup = keyboard)
-
-
-
-
-
+        bot.send_message(message.chat.id ,f'درخواست پرداخت یوزر :‌{payment_decline_reason_2[message.from_user.id]["user_id"]} رد شد')
+        USERS_BASKET.pop(message.from_user.id)
+        USER_PAYCARD_FISH.pop(message.from_user.id)
+        payment_decline_reason_2.pop(message.from_user.id)
 
 
 
@@ -1402,7 +1315,7 @@ def get_changing_product_details_name(message):
 # ------------------------- Wallet-Profile ----------------------------------------------------------------------------------------#
 # ---------------------------------------------------------------------------------------------------------------------------------#
 
-wallet_profile_dict = {'charge_wallet': False ,'waiting_for_user_fish' : False ,
+wallet_profile_dict = {'charge_wallet': False ,'waiting_for_USER_FISH' : False ,
                        'tranfert_money_from_wallet' : False , 'get_amount_to_transefer' : False , 'user_id' : None}
 
 
@@ -1550,7 +1463,7 @@ def charge_wallet_profilewallet(message):
                 ⚠️ هرگونه واریزی اشتباه بر عهده شخص میباشد
 
                 """        
-                wallet_profile_dict['waiting_for_user_fish'] = True
+                wallet_profile_dict['waiting_for_USER_FISH'] = True
                 wallet_profile_dict['charge_wallet'] = False
                 bot.send_message(message.chat.id , text_ )
                 users_ = users.objects.get(user_id = message.chat.id )
@@ -1565,10 +1478,10 @@ def charge_wallet_profilewallet(message):
 
 
 # ./wallet-profile > charge - wallet : fish section
-@bot.message_handler(func= lambda message : wallet_profile_dict['waiting_for_user_fish'] == True , content_types=['photo'])
+@bot.message_handler(func= lambda message : wallet_profile_dict['waiting_for_USER_FISH'] == True , content_types=['photo'])
 def charge_wallet_profilewallet_fish(message):
     
-    if wallet_profile_dict['waiting_for_user_fish'] == True :
+    if wallet_profile_dict['waiting_for_USER_FISH'] == True :
         bot.send_message(message.chat.id , 'درخواست شما ارسال شد')
         bot.send_photo((i.user_id for i in admins.objects.all()) , message.photo[-1].file_id , reply_markup=BotKb.wallet_accepts_or_decline(message.chat.id ))
 

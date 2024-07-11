@@ -1,6 +1,6 @@
 from mainrobot.models import users , channels
-
-
+from keybuttons import BotkeyBoard as botkb
+#handles welcome functions
 #= check user existence
 def CHECK_USER_EXITENCE(UserId , UserFirstName , UserLastName , UserUserName , UserWallet):
     try: 
@@ -16,15 +16,20 @@ def CHECK_USER_EXITENCE(UserId , UserFirstName , UserLastName , UserUserName , U
 
 
 #= check user in channel or not
-def CHECK_USER_CHANNEL(UserId , Bot):
-
+def FORCE_JOIN_CHANNEL(UserId, Bot):
     Users_ = users.objects.get(user_id=UserId)
     Channels_ = channels.objects.all()
+    state = {}
     
     for i in Channels_:
-        Membership_status = Bot.get_chat_member(i.channel_url or i.channel_id , Users_.user_id).status
+        Membership_ = Bot.get_chat_member(i.channel_url or i.channel_id, Users_.user_id).status
+        state[i.channel_id] = Membership_
+
     
-    if Membership_status in ['member' , 'administrator' , 'creator'] :
-            return True
-    else :
-            return False
+    
+    # Check all membership statuses
+    for membership_status in state.values():
+        if membership_status == 'left':
+            return botkb.load_channels(Bot , UserId)
+    
+    return True

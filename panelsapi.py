@@ -25,21 +25,24 @@ class marzban:
             return False
 
 
-    def add_user(self , username , data_limit , date_expire):
+    def add_user(self , username , product_id):
         #- https://marzban:port/api/user
         panel_url = self.panel_url + '/api/user'
         #موقعه خرید محصول باید اینباند ها رو لود کنیم
-         #, product_id:int=None
+        #, product_id:int=None
         # products_ = products.objects.get()
-
-        #proxies 
+        product_ = products.objects.get(id = product_id)
+        data_expire = product_.expire_date
+        data_limit = float(product_.data_limit)
+        inbounds = product_.inbounds_selected
         current_time = datetime.datetime.now()
-        expire_time = current_time + datetime.timedelta(days = date_expire)
+        expire_time = current_time + datetime.timedelta(days = data_expire)
         reality = self.reality_flow if self.reality_flow else ""
+
         proxy_dict ={
             "username": username,
             "proxies": {"vmess": {"id": str(uuid.uuid4())},"vless": {'flow': reality}},
-            "inbounds": json.loads(self.inbounds),
+            "inbounds": json.loads(inbounds),
             "expire": datetime.datetime.timestamp(expire_time),
             "data_limit": data_limit * 1024 * 1024 * 1024,
             "data_limit_reset_strategy": "no_reset",
@@ -55,13 +58,16 @@ class marzban:
             return json.loads(add_user_request.content)
         else :
             return False
-
-
+        
     def get_inbounds(self):
         panel_url = self.panel_url + '/api/inbounds'
         get_headr = marzban.get_token_acces(self)
         get_inbouns_requsts = requests.get(panel_url , headers=get_headr)
         return json.loads(get_inbouns_requsts.content)
-
-
-
+    
+    def get_all_users(self):
+        panel_url = self.panel_url + '/api/users'
+        get_header = marzban.get_token_acces(self) 
+        get_users_requsts = requests.get(panel_url , headers=get_header)
+        if get_users_requsts.status_code ==200:
+            return json.loads(get_users_requsts.content)
