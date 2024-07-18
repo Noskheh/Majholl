@@ -132,3 +132,15 @@ class payment_setting(models.Model):
 
     class Meta:
         db_table = 'TeleBot_paymentsetting'
+
+
+
+class subscriptions(models.Model):
+    user_id = models.ForeignKey(to=users , to_field='user_id' , on_delete=models.DO_NOTHING)
+    user_subscription = models.CharField(max_length=56)
+    product_id = models.ForeignKey(to=products  , on_delete=models.DO_NOTHING)
+    panel_id = models.ForeignKey(to=v2panel , on_delete= models.DO_NOTHING)
+    date_created= models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'TeleBot_subscriptions'

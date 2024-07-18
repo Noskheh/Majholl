@@ -1,8 +1,8 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup , InlineKeyboardButton
-from mainrobot.models import v2panel , products , admins , users , channels
+from mainrobot.models import v2panel , products , admins , users , channels , subscriptions
 from typing import Union , List
-import re , panelsapi
+import re , panelsapi , datetime , jdatetime
 
 
 
@@ -680,3 +680,62 @@ class BotkeyBoard:
         keyboard.add(*rows)
         
         return keyboard  
+    
+
+# ------------------------- User_service status ----------------------------------------------------------------------------------------
+    @staticmethod
+    def show_service_status(user_id):
+        keyboard = InlineKeyboardMarkup()
+        users_ = users.objects.get(user_id = user_id)
+        subscriptions_ = subscriptions.objects.filter(user_id = users_)
+
+        buttons_list = []
+        for i in subscriptions_:
+            buttons = InlineKeyboardButton(text= i.user_subscription , callback_data=f'serviceshow_{users_.user_id}_{i.user_subscription}')
+            buttons_list.append(buttons)
+        button_back = InlineKeyboardButton(text='↪️بازگشت به منوی قبلی'  , callback_data='back_from_service_status')
+        button_notinlist = InlineKeyboardButton(text='سرویس من در لیست نیست'  , callback_data='service_not_inlist')
+
+        keyboard.add(*buttons_list , button_notinlist , button_back , row_width=1)
+
+        return keyboard
+    
+
+
+
+    @staticmethod 
+    def user_service_status(user_id , request):
+        keyboard = InlineKeyboardMarkup( )
+        users_ = users.objects.get(user_id = user_id)
+
+        service_status = '✅' if request['status'] == 'active' else '❌'
+        used_traffic = request['used_traffic'] / 1024 / 1024 / 1024
+
+        expire_dt = jdatetime.datetime.fromtimestamp(request['expire'])
+
+        online_at = request['online_at'] if request['online_at'] is not None else 'empty'
+
+        if online_at != 'empty':
+            dt = datetime.datetime.strptime(online_at, '%Y-%m-%dT%H:%M:%S')
+            last_online = jdatetime.datetime.fromgregorian(datetime=dt)
+        else:
+            last_online = 'بدون اتصال'
+
+        buttons_list = [
+                    [(f'{service_status}' , f'{service_status}') , ('وضعیت سرویس ' , 'en_di_service')] , 
+                    [(f'{used_traffic}' ,f'{used_traffic}') , ('🔋حجم مصرفی', 'config_usage')],
+                    [(f'{str(expire_dt)}' , 'expire_dtime') , ('⏳تاریخ انقضا' , 'expire_dtime')] , 
+                    [(f'{str(last_online)}' ,f'{str(last_online)}') , ('👁‍🗨زمان آخرین اتصال' , 'last_connection')] ,
+
+                    [('دریافت لینک اشتراک' , 'get_config_link') , ('دریافت QRcode اشتراک' , 'get_qrcode_link')] , 
+                    [('حذف لینک فعلی و دریافت لینک جدید', 'get_new_link')]]
+        
+        bt_list = []
+        for row in buttons_list:
+            for text , data in row:
+                buttons = InlineKeyboardButton(text= text , callback_data=data)
+                bt_list.append(buttons)
+        keyboard.add(*bt_list ,row_width=2)
+
+
+        return keyboard

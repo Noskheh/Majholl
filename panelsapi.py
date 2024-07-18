@@ -71,3 +71,23 @@ class marzban:
         get_users_requsts = requests.get(panel_url , headers=get_header)
         if get_users_requsts.status_code ==200:
             return json.loads(get_users_requsts.content)
+
+
+    def get_user(self , username):
+        panel_url = self.panel_url + f'/api/user/{username}'
+        get_header = marzban.get_token_acces(self)
+        get_user_request = requests.get(panel_url , headers=get_header)
+        if get_user_request.status_code == 200 :
+            return json.loads(get_user_request.content)
+        else :
+            return f'{username} not found'
+       
+        
+    def revoke_sub(self, username):
+        panel_url = self.panel_url + f'/api/user/{username}/revoke_sub'
+        get_header = marzban.get_token_acces(self)
+        revoke_sub = requests.post(panel_url , headers=get_header)
+        if revoke_sub.status_code == 200:
+            return json.loads(revoke_sub.content)
+        else :
+            return f'revoke {username} subscription failed'

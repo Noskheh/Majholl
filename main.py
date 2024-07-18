@@ -1,6 +1,6 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup , InlineKeyboardButton 
-from mainrobot.models import users , admins , v2panel , products , inovices , payments , channels
+from mainrobot.models import users , admins , v2panel , products , inovices , payments , channels , subscriptions
 from keybuttons import BotkeyBoard as BotKb
 import string , random , re , decimal , json  
 from functions.USERS_onstarts import *
@@ -37,6 +37,9 @@ def start_bot(message) :
         PRODUCT_RECEIVING_STATE['enable_product_adding'] = False
         CHANGING_PANEL_DETAILS.update({key : False for key in CHANGING_PANEL_DETAILS})
         CHNAGING_PRODUCT_DETAILS['Enable_Changing_Product_Deatails'] = False
+
+        if message.from_user.id in marzban_panel_api_user:
+            marzban_panel_api_user.pop(message.from_user.id)
         """  
         This is temproraliy in here      
         if message.from_user.id in USERS_BASKET:
@@ -281,7 +284,13 @@ def handle_selected_products(call) :
         else :
             bot.edit_message_text(paied_msg , call.message.chat.id , call.message.message_id)
             how_to_send(req, int(USERS_BASKET[call.from_user.id]['panel_number']) , bot , call.from_user.id)
+            users_ = users.objects.get(user_id = call.from_user.id)
+            panels_= v2panel.objects.get(id = USERS_BASKET[call.from_user.id]['panel_number'])
+            products_ = products.objects.get(id =USERS_BASKET[call.from_user.id]['product_id'] )
+            subscriptions_ = subscriptions.objects.create(user_id = users_ , product_id = products_ , panel_id = panels_ , user_subscription = USERS_BASKET[call.from_user.id]['usernameforacc'])
             USERS_BASKET.pop(call.from_user.id)
+
+
 
     #pay card
     if call.data == 'pay_with_card':
@@ -357,7 +366,6 @@ def getting_fish_image(message):
 def agree_or_disagree_kbk_payment(call):
     
     call_data = call.data.split('_')
-    print(USERS_BASKET)
     user_basket = USERS_BASKET[int(call_data[1])]
     if call.data.startswith('agree_')  and (int(call_data[1]) in USER_PAYCARD_FISH and len(USER_PAYCARD_FISH) >=1 and  USER_PAYCARD_FISH[int(call_data[1])]['accpet_or_reject']) == True:
 
@@ -382,6 +390,12 @@ def agree_or_disagree_kbk_payment(call):
                 bot.send_message(call.data.split('_')[1] , paied_msg)
                 send_request = panelsapi.marzban(user_basket['panel_number']).add_user(user_basket['usernameforacc'] , user_basket['product_id'] )
                 how_to_send(send_request , user_basket['panel_number'] , bot , int(call_data[1]))
+
+                users_ = users.objects.get(user_id = int(call_data[1]))
+                panels_= v2panel.objects.get(id = USERS_BASKET[int(call_data[1])]['panel_number'])
+                products_ = products.objects.get(id =USERS_BASKET[int(call_data[1])]['product_id'] )
+                subscriptions_ = subscriptions.objects.create(user_id = users_ , product_id = products_ , panel_id = panels_ , user_subscription = USERS_BASKET[int(call_data[1])]['usernameforacc'])
+                
                 USERS_BASKET.pop(int(call_data[1]))
                 USER_PAYCARD_FISH.pop(int(call_data[1]))
 
@@ -430,6 +444,59 @@ def get_decline_reason(message):
         USERS_BASKET.pop(message.from_user.id)
         USER_PAYCARD_FISH.pop(message.from_user.id)
         payment_decline_reason_2.pop(message.from_user.id)
+
+# ---------------------------- service_status ----------------------------------------------------------------------------------------
+
+marzban_panel_api_user = {}
+
+@bot.callback_query_handler(func= lambda call: call.data in ['service_status' ,  'get_config_link' , 'get_qrcode_link']  or call.data.startswith(('serviceshow_' , 'get_new_link')))
+def show_services(call):
+    Text_0 = 'برای نمایش وضعیت سرویس بر روی آن کلیک کنید'
+
+    if call.data=='service_status':
+        bot.edit_message_text(Text_0 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.show_service_status(call.from_user.id))
+
+    if call.data.startswith('serviceshow_'):
+        call_data = call.data.split('_')
+        Text_1 = 'وضعیت فعلی سرویس شما'
+        subscriptions_ = subscriptions.objects.get(user_subscription=  f'{call_data[2]}_{call_data[3]}')
+        request = panelsapi.marzban(int(subscriptions_.panel_id.pk)).get_user( f'{call_data[2]}_{call_data[3]}')
+        marzban_panel_api_user[call.from_user.id]=request
+        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.user_service_status(call_data[1] , request))
+
+
+    if call.data == 'get_config_link':
+        if call.from_user.id in marzban_panel_api_user:
+            Text_2 =marzban_panel_api_user[call.from_user.id]['subscription_url']
+            bot.send_message(call.message.chat.id , Text_2)
+        else:
+            bot.answer_callback_query(call.id , 'نمیتوانید از این پیام استفاده کنید')
+            bot.send_message(call.message.chat.id , Text_0 , reply_markup=BotKb.show_service_status(call.from_user.id))            
+
+
+    if call.data == 'get_qrcode_link':
+        if call.from_user.id in marzban_panel_api_user:
+            Text_4 =marzban_panel_api_user[call.from_user.id]['subscription_url']
+            qr = QRcode_maker.make_qrcode(Text_4)
+            bot.send_photo(call.message.chat.id , qr)
+        else:
+            bot.answer_callback_query(call.id , 'نمیتوانید از این پیام استفاده کنید')
+            bot.send_message(call.message.chat.id , Text_0 , reply_markup=BotKb.show_service_status(call.from_user.id))            
+
+
+    if call.data.startswith('get_new_link'):
+        if call.from_user.id in marzban_panel_api_user:
+            user_name = marzban_panel_api_user[call.from_user.id]['username']
+            subscriptions_ = subscriptions.objects.get(user_subscription = user_name)
+            req = panelsapi.marzban(subscriptions_.panel_id.pk).revoke_sub(user_name)
+            bot.send_message(call.message.chat.id , req['subscription_url'])
+        else :
+            bot.answer_callback_query(call.id , 'نمیتوانید از این پیام استفاده کنید')
+            bot.send_message(call.message.chat.id , Text_0 , reply_markup=BotKb.show_service_status(call.from_user.id))            
+
+
+
+
 
 
 
