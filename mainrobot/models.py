@@ -28,8 +28,10 @@ class channels(models.Model):
 
 class admins(models.Model):
     user_id = models.BigIntegerField()
+    admin_name = models.CharField(max_length=128 , null=True , blank=True)
     is_admin = models.BooleanField(default=False)
     is_owner = models.BooleanField(default=False)
+    password = models.CharField(max_length=128 , null=True , blank=True)
 
     def __str__(self):
         return f'User {self.user_id}: Admin={self.is_admin}, Owner={self.is_owner}'
@@ -105,6 +107,7 @@ class inovices(models.Model):
     
     # later added
     config_name = models.CharField(max_length= 56 , blank= True , null= True)
+    kind_pay = models.CharField(max_length=12 , blank=True , null=True)
     class Meta:
         db_table = 'TeleBot_inovices'
 

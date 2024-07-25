@@ -10,7 +10,7 @@ from bottext import *
 
 
 #- handling one panel
-def plans_loading_for_one_panel() :
+def plans_loading_for_one_panel(tamdid:bool= False) :
     
     #capcity_mode = 2 ظرفیت نامحدود / capcity_mode = 1 دارای ظرفیت / capcity_mode = 0 بدون ظرفیت
     #sale_mode = 0 فروش بسته / sale_mode 1 = فروش باز
@@ -37,17 +37,26 @@ def plans_loading_for_one_panel() :
                     if i.all_capcity > 0 :
                         for product in products_filter : 
                                 if product.product_status == 1 :
-                                    buttons = InlineKeyboardButton(text = product.product_name , callback_data =  f"buyservice_{product.id}_salemode_open_withcapcity")
+                                    if tamdid is  False:
+                                        call_data_1 =  f"buyservice_{product.id}_salemode_open_withcapcity"
+                                    else : 
+                                        call_data_1 = f"newingtamdid_{product.id}_salemode_open_withcapcity"
+                                    buttons = InlineKeyboardButton(text = product.product_name , callback_data = call_data_1)
                                     keyboard.add(buttons) 
                         button_back_1more = InlineKeyboardButton(text = 'بازگشت به منوی اصلی🔙' , callback_data = 'back_mainmenu_from_one_panels')
                         keyboard.add(button_back_1more) 
                         return keyboard
                     else :
                         return 'sale_open_no_zarfit'
+                    
                 elif i.capcity_mode == 2 : # نوع ظرفیت :‌ نامحدود                 
                     for product in products_filter : 
                             if product.product_status ==1:
-                                buttons = InlineKeyboardButton(text = product.product_name , callback_data = f"buyservice_{product.id}_salemode_open_freecapcity")
+                                if tamdid is  False:
+                                    call_data_2 =  f"buyservice_{product.id}_salemode_open_withcapcity"
+                                else : 
+                                    call_data_2= f"newingtamdid_{product.id}_salemode_open_withcapcity"
+                                buttons = InlineKeyboardButton(text = product.product_name , callback_data = call_data_2)
                                 keyboard.add(buttons ) 
                     button_back_1more = InlineKeyboardButton(text = 'بازگشت به منوی اصلی🔙', callback_data = 'back_mainmenu_from_one_panels')
                     keyboard.add(button_back_1more) 
@@ -67,7 +76,7 @@ def plans_loading_for_one_panel() :
 
 
 # handling two panel or more
-def plans_loading_for_two_more_panel(panel_pk : int ) :
+def plans_loading_for_two_more_panel(panel_pk : int , tamdid:bool = False ) :
 
     keyboard = InlineKeyboardMarkup()
     panels_ = v2panel.objects.filter(id = panel_pk)
@@ -92,7 +101,11 @@ def plans_loading_for_two_more_panel(panel_pk : int ) :
                         if i.all_capcity > 0: # ظرفیت : دارای ظرفیت
                             for product in products.objects.filter(panel_id = panel_pk).order_by('sort_id'):
                                 if product.product_status == 1:
-                                    buttons = InlineKeyboardButton(text= product.product_name , callback_data= f"buyservice_{product.id}_salemode_open_withcapcity")
+                                    if tamdid is  False:
+                                        call_data_1 =  f"buyservice_{product.id}_salemode_open_withcapcity"
+                                    else : 
+                                        call_data_1 = f"newingtamdid_{product.id}_salemode_open_withcapcity"
+                                    buttons = InlineKeyboardButton(text= product.product_name , callback_data= call_data_1)
                                     keyboard.add(buttons)
                             button_back_2more = InlineKeyboardButton(text = 'بازگشت به منوی اصلی🔙' , callback_data = 'back_to_main_menu_for_two_panels')
                             keyboard.add(button_back_2more)  
@@ -105,7 +118,11 @@ def plans_loading_for_two_more_panel(panel_pk : int ) :
                 elif i.capcity_mode == 2 : # ظرفیت :نامحدود
                         for product in products.objects.filter(panel_id = panel_pk).order_by('sort_id'):
                             if product.product_status ==1 :
-                                buttons = InlineKeyboardButton(text= product.product_name , callback_data= f"buyservice_{product.id}_salemode_open_freecapcity")
+                                if tamdid is  False:
+                                    call_data_2 =  f"buyservice_{product.id}_salemode_open_withcapcity"
+                                else : 
+                                    call_data_2 = f"newingtamdid_{product.id}_salemode_open_withcapcity"  
+                                buttons = InlineKeyboardButton(text= product.product_name , callback_data=call_data_2)
                                 keyboard.add(buttons)
                         button_back_2more = InlineKeyboardButton(text = 'بازگشت به منوی اصلی🔙' , callback_data = 'back_to_main_menu_for_two_panels')
                         keyboard.add(button_back_2more)  
@@ -171,11 +188,64 @@ def pay_with_wallet( call , bot , product_dict , panel_loaded ):
                                         data_limit= info['data_limit'] , expire_date= info['expire_date'] ,
                                         pro_cost= info['pro_cost'] , config_name = info['usernameforacc'] ,
                                         paid_status = 1 , # 0 > unpaid , 1 > paid , 2 > waiting  , 3 > disagree 
-                                        paid_mode= 'wlt')
+                                        paid_mode= 'wlt' , kind_pay='Buy')
             
         inovivces2_ = inovices.objects.filter(user_id = user_).latest('created_date')
         payments_ = payments.objects.create(user_id = user_ , amount = info['pro_cost'] ,payment_stauts = 'accepted' , inovice_id = inovivces2_)
         send_request = panelsapi.marzban(info['panel_number']).add_user(info['usernameforacc'] , info['product_id'])
+        if send_request is False :
+            return 'requset_false'
+        else :
+            return send_request 
+
+
+
+
+
+
+
+
+
+
+#-Tamidi pay with wallet
+def tamdid_pay_with_wallet(call , bot , product_dict , panel_loaded):
+    info = product_dict[call.from_user.id]
+    user_ = users.objects.get(user_id = call.from_user.id)
+    panel_ = v2panel.objects.get(id = info['panel_number'])
+    product_price = info['pro_cost']
+
+    if user_.user_wallet < product_price :
+        bot.send_message(call.message.chat.id , '⚠️موجودی حساب شما کافی نمیباشد ')
+
+    elif user_.user_wallet >= product_price :
+        new_wallet = (user_.user_wallet) - decimal.Decimal(product_price)
+        try :
+            user_.user_wallet = new_wallet
+            user_.save()
+                
+            if panel_loaded['one_panel'] == True :
+                if  ('open' and 'withcapcity') in info['statement'] :
+                    check_fun.check_capcity(panel_loaded['panel_pk'])
+
+            else :
+                if panel_loaded['two_panel'] == True :
+                    if  ('open' and 'withcapcity')  in info['statement']:
+                        check_fun.check_capcity(panel_loaded['panel_pk'])
+
+        except Exception as error_1:
+            print(f'an error eccured  when updating user wallet: \n\t {error_1}')
+        
+
+        inovivces_ = create_inovices(user_id= user_ , user_username= call.from_user.username ,
+                                        panel_name = panel_.panel_name , product_name= info['product_name'],
+                                        data_limit= info['data_limit'] , expire_date= info['expire_date'] ,
+                                        pro_cost= info['pro_cost'] , config_name = info['config_name'] ,
+                                        paid_status = 1 , # 0 > unpaid , 1 > paid , 2 > waiting  , 3 > disagree 
+                                        paid_mode= 'wlt', kind_pay='Tamdid' )
+            
+        inovivces2_ = inovices.objects.filter(user_id = user_).latest('created_date')
+        payments_ = payments.objects.create(user_id = user_ , amount = info['pro_cost'] ,payment_stauts = 'accepted' , inovice_id = inovivces2_)
+        send_request = panelsapi.marzban(info['panel_number']).put_user(info['config_name'] , info['product_id'])
         if send_request is False :
             return 'requset_false'
         else :
@@ -195,9 +265,19 @@ def pay_with_wallet( call , bot , product_dict , panel_loaded ):
 
 
 
-def create_paycard_fish():
-    user_fish = { 'fish_send' : False , 'accpet_or_reject':False}
-    return user_fish
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #pay with card
 
@@ -213,13 +293,50 @@ def pay_with_card(call , bot , product_dict , user_fish ):
                                 data_limit= info['data_limit'] , expire_date= info['expire_date'] ,
                                 pro_cost= info['pro_cost'] , config_name = info['usernameforacc'] ,
                                 paid_status= 2 , # 0 > unpaid , 1 > paid , 2 > waiting  , 3 > disagree
-                                paid_mode= 'kbk')
+                                paid_mode= 'kbk' , kind_pay='Buy')
     
     
     if call.from_user.id not in user_fish :
         user_fish[call.from_user.id] = create_paycard_fish()
 
     user_fish[call.from_user.id]['fish_send'] = True
+    bot.send_message(chat_id = call.message.chat.id , text = buy_service_section_card_to_card_msg(info['pro_cost']))
+
+
+
+
+
+def create_paycard_fish(tamdid:bool =False):
+    if tamdid is False:
+        user_fish = {'fish_send' : False , 'accpet_or_reject':False}
+        return user_fish
+    else :
+        user_fish = {'tamdid_fish_send' : False , 'tamdid_accpet_or_reject':False}
+        return user_fish
+    
+
+
+
+
+
+def tamdid_pay_with_card(call , bot , product_dict , user_fish ):
+    info = product_dict[call.from_user.id]
+
+    panel_name = v2panel.objects.get(id=info['panel_number'] ).panel_name
+    users_ = users.objects.get(user_id=call.from_user.id )
+
+    inovivces_ = create_inovices(user_id= users_ , user_username=call.from_user.username ,
+                                panel_name = panel_name , product_name= info['product_name'],
+                                data_limit= info['data_limit'] , expire_date= info['expire_date'] ,
+                                pro_cost= info['pro_cost'] , config_name = info['config_name'] ,
+                                paid_status= 2 , # 0 > unpaid , 1 > paid , 2 > waiting  , 3 > disagree
+                                paid_mode= 'kbk' , kind_pay='Tamdid' )
+   
+    
+    if call.from_user.id not in user_fish :
+        user_fish[call.from_user.id] = create_paycard_fish(tamdid=True)
+
+    user_fish[call.from_user.id]['tamdid_fish_send'] = True
     bot.send_message(chat_id = call.message.chat.id , text = buy_service_section_card_to_card_msg(info['pro_cost']))
 
 
@@ -249,8 +366,7 @@ def pay_with_card(call , bot , product_dict , user_fish ):
 
 
 
-
-def create_inovices(user_id  , panel_name , product_name , data_limit , expire_date , pro_cost ,  paid_status ,config_name : None , paid_mode : str , gift_code : int = None , discount : int = None , user_username : str = None):
+def create_inovices(user_id  , panel_name , product_name , data_limit , expire_date , pro_cost ,  paid_status , kind_pay ,config_name : None , paid_mode : str , gift_code : int = None , discount : int = None , user_username : str = None):
      
      
     try :
@@ -265,7 +381,8 @@ def create_inovices(user_id  , panel_name , product_name , data_limit , expire_d
                             discount = discount ,
                             config_name = config_name , 
                             paid_status = paid_status ,
-                            paid_mode = paid_mode )   
+                            paid_mode = paid_mode ,
+                            kind_pay = kind_pay)   
         return 'done'   
     except Exception as error:
         print(f'an error eccoured when adding inovices : {error}')

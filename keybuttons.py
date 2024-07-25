@@ -14,9 +14,9 @@ class BotkeyBoard:
 
         keyboard = InlineKeyboardMarkup()
 
-        user_side_ui_buttom = [[InlineKeyboardButton(' 🚀 خرید سرویس جدید ' , callback_data ='buy_service')] ,
-                               [InlineKeyboardButton(' 📡 وضعیت سرویس' , callback_data ='service_status') ,InlineKeyboardButton(' 🔄  تمدید سرویس ' , callback_data ='tamdid_service')] ,
-                               [InlineKeyboardButton(' 📖 حساب کاربری ',callback_data ='wallet_profile')]
+        user_side_ui_buttom = [[InlineKeyboardButton('🚀 خرید سرویس جدید' , callback_data ='buy_service')] ,
+                               [InlineKeyboardButton('📡 وضعیت سرویس' , callback_data ='service_status') ,InlineKeyboardButton('🔄 تمدید سرویس ' , callback_data ='tamdid_service')] ,
+                               [InlineKeyboardButton('📖 حساب کاربری',callback_data ='wallet_profile')]
                               ]
         
         for rows in user_side_ui_buttom:
@@ -24,7 +24,7 @@ class BotkeyBoard:
 
 
         for i in admins.objects.all() :
-            if userId == i.user_id and (i.is_owner == 1) :
+            if userId == i.user_id and (i.is_owner == 1 or i.is_admin == 1) :
                 button_robot_management = InlineKeyboardButton(text = '⚙️ مدیریت ربات',callback_data = 'robot_management')
                 keyboard.add(button_robot_management)
 
@@ -608,8 +608,15 @@ class BotkeyBoard:
 
 
     @staticmethod 
-    def payby_in_user_side():
-        pay_options = [('پرداخت با کیف پول' , 'pay_with_wallet') , ('پرداخت کارت به کارت' , 'pay_with_card') , ('بازگشت به منوی اصلی🔙' , 'back_from_payment')]
+    def payby_in_user_side(tamdid:bool= False , tamdid_card:bool=False):
+        
+        if tamdid is False:
+            data = 'pay_with_wallet'
+        else :
+            data = 'tamdid_pay_with_wallet'
+
+        data_card = 'pay_with_card' if tamdid_card is False else 'tamdid_pay_with_card'
+        pay_options = [('پرداخت با کیف پول' , data) , ('پرداخت کارت به کارت' , data_card) , ('بازگشت به منوی اصلی🔙' , 'back_from_payment')]
         keyboard = InlineKeyboardMarkup()
         for text , data in pay_options :     
             buttons = InlineKeyboardButton(text = text , callback_data = data)
@@ -622,11 +629,14 @@ class BotkeyBoard:
 
 
     @staticmethod 
-    def agree_or_disagree(user_id , pay :int = 0): # 1 = خرید مستقیم با ارسال عکس رسید = 0 \  شارژ کیف پول با ارسال عکس رسید
+    def agree_or_disagree(user_id , tamdid:bool=None): # 1 = خرید مستقیم با ارسال عکس رسید = 0 \  شارژ کیف پول با ارسال عکس رسید
         keyboard = InlineKeyboardMarkup()
+        data_agree =  f'agree_{user_id}' if tamdid is None else   f'tamdid_agree_{user_id}'
+        data_disagree = f'disagree_{user_id}' if tamdid is None else  f'tamdid_disagree_{user_id}'
 
-        rows = [InlineKeyboardButton(text ='تایید پرداخت', callback_data= f'agree_{user_id}_{pay}'),
-                InlineKeyboardButton(text ='رد پرداخت', callback_data =f'disagree_{user_id}_{pay}')]
+        rows = [InlineKeyboardButton(text ='تایید پرداخت', callback_data = data_agree),
+                InlineKeyboardButton(text ='رد پرداخت', callback_data = data_disagree)]
+        
         keyboard.add(*rows)
         
         return keyboard    
@@ -739,3 +749,114 @@ class BotkeyBoard:
 
 
         return keyboard
+    
+# ------------------------- tamdidi_service ----------------------------------------------------------------------------------------
+    @staticmethod
+    def show_user_subsctription(user_id):
+        keyboard = InlineKeyboardMarkup()
+        user_ = users.objects.get(user_id = user_id)
+        subscriptions_ = subscriptions.objects.filter(user_id = user_)
+        for i in subscriptions_:
+            buttons = InlineKeyboardButton(text= i.user_subscription , callback_data= f'Tamidi_{i.user_subscription}_{i.user_id.user_id}')
+            keyboard.add(buttons)
+        return keyboard
+    
+# ------------------------- admin-section ----------------------------------------------------------------------------------------
+
+
+    @staticmethod 
+    def show_admins(who = None , num_toshow_items:int=2 , page_items:int=1):
+
+        keyboard = InlineKeyboardMarkup()
+        admins_ = admins.objects.filter(is_admin=1).all()
+        admin_name_id = f'{admins_.first().admin_name}-{admins_.first().user_id}'
+        admin_id = f'{str(admins_.first().user_id)}'
+
+        if who is not None: 
+            try :
+                admins_who = admins.objects.get(user_id = int(who))
+                admin_name_id = f'{admins_who.admin_name}-{admins_who.user_id}'
+                admin_id = f'{str(admins_who.user_id)}'
+            except Exception as notfounding :
+                print(f'user not found in admin db // error msg : {notfounding}')
+  
+             
+
+        
+        buttons_row_list = [[(f'🟢انتخاب شده : {admin_name_id}', f'loads_{admin_id}')],
+                            [('❌حذف کردن ادمین ' ,f'adminremove_{admin_id}') , ('🕹مدیریت دسترسی ها' , f'adminaccess_{admin_id}')],
+                            [('🔻انتخاب ادمین های دیگر🔻' ,'Choose_other_admins')]]
+
+
+        buttons_add_list = []
+        for row in buttons_row_list:
+            for text , data in row:
+                button = InlineKeyboardButton(text , callback_data=data)
+                buttons_add_list.append(button)
+        keyboard.add(buttons_add_list[0])
+        keyboard.add(buttons_add_list[1] , buttons_add_list[2] , row_width=2)
+        keyboard.add(buttons_add_list[3])
+
+
+        start = (page_items - 1) * num_toshow_items
+        end = start + num_toshow_items
+
+        admin_list = [i for i in admins_]
+
+        if  who is not None  and admins_.first() not in admin_list:
+            admin_list.append(admins_.first())
+        
+
+        items_button = []
+
+            
+        for ind , items in enumerate(admin_list , 0):
+            if start < ind <= end :
+                items_button.append(items)
+                
+        
+              
+        if who is not None :
+            user_admin = admins.objects.get(user_id = who)
+            if user_admin in items_button:
+               indx =  items_button.index(user_admin)
+               items_button.pop(indx)
+               items_button.insert(indx , admins_.first())
+        
+
+
+        if len(items_button) ==1:
+            buttons_bottom_list = [[(f'{items_button[0].admin_name}-{items_button[0].user_id}' , f'load_{items_button[0].user_id}')],
+                                    [('◀️ قبلی ' , f'Abefore_{page_items - 1}')]]
+   
+        elif len(items_button) ==2:
+            if page_items == 1 and len(admin_list) >= 4:
+                buttons_bottom_list = [[(f'{items_button[0].admin_name}-{items_button[0].user_id}' , f'load_{items_button[0].user_id}') , (f'{items_button[1].admin_name}_{items_button[1].user_id}' , f'load_{items_button[1].user_id}')],
+                                      [('▶️ بعدی ' , f'Anext_{page_items + 1}')]]
+                
+            elif page_items == 1 and len(admin_list)-1 == len(items_button):
+                    buttons_bottom_list = [[(f'{items_button[0].admin_name}-{items_button[0].user_id}' , f'load_{items_button[0].user_id}') , (f'{items_button[1].admin_name}_{items_button[1].user_id}' , f'load_{items_button[1].user_id}')],]
+                    
+
+            else:
+                if len(admin_list)-1 == (page_items*2):
+                    buttons_bottom_list = [[(f'{items_button[0].admin_name}-{items_button[0].user_id}' , f'load_{items_button[0].user_id}') , (f'{items_button[1].admin_name}_{items_button[1].user_id}' , f'load_{items_button[1].user_id}')],
+                                        [('◀️ قبلی ' , f'Abefore_{page_items - 1}')]]
+                
+                else:
+                    buttons_bottom_list = [[(f'{items_button[0].admin_name}-{items_button[0].user_id}' , f'load_{items_button[0].user_id}') , (f'{items_button[1].admin_name}_{items_button[1].user_id}' , f'load_{items_button[1].user_id}')],
+                                        [('◀️ قبلی ' , f'Abefore_{page_items - 1}'), ('▶️ بعدی ' , f'Anext_{page_items + 1}')]]
+
+
+
+        bottom_list = []
+        for bottom in buttons_bottom_list:
+            for text , data in bottom:
+                button = InlineKeyboardButton(text= text , callback_data=data)
+                bottom_list.append(button)
+        back_admin_buttons = InlineKeyboardButton('بازگشت به منوی قبلی↪️' , callback_data='back_from_admin_menu')
+        admin_add = InlineKeyboardButton('➕اضافه کردن ادمین ' , callback_data='add_new_admin')
+        keyboard.add(*bottom_list, row_width=2)
+        keyboard.add(admin_add , back_admin_buttons ,  row_width=1)
+
+        return keyboard 

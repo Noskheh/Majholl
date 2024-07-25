@@ -1,6 +1,73 @@
 from django.core.management.base import BaseCommand
+from mainrobot.models import admins
+import getpass , os , time , main 
 
+
+#/run the bot
 class Command(BaseCommand):
     def handle(self , *args , **options):
-        import main 
-        main.bot.polling(non_stop= True )
+
+        if not admins.objects.all().exists():
+            clear_console()
+            self.stdout.write(self.style.HTTP_INFO('--- Creating Owner Bot !! ----\n \t Notice that this is done for first time next it will be loaded from db'))
+
+            get_user_id = input(self.style.HTTP_INFO('stpe-1 : Send me OWNER user id >>? '))
+            get_token_bot = input(self.style.HTTP_INFO('step-2 : Send me your token bot >>?'))
+            get_user_passwd = getpass.getpass(self.style.HTTP_INFO('step-3 : Send me a password >>? '))
+            confirmation_passwd  = getpass.getpass(self.style.HTTP_INFO('step-4 : Send me password again >>?'))
+
+            is_owner = input(self.style.HTTP_INFO('step-5 : Is owner (true/false) >>?'))
+            time.sleep(2)
+
+            if get_user_passwd != confirmation_passwd :
+                self.stdout.write(self.style.ERROR('Passwords do not match. Exiting...'))
+                return
+            if  is_owner in ['true' , 'false' , 't' , 'f', 'True', 'False', 'yes','yes' ,'No','no']:
+                owner = 1 
+                
+            admins.objects.create(user_id = get_user_id , is_admin = owner , is_owner = owner , password=get_user_passwd)
+            self.stdout.write(self.style.SUCCESS('Successfully !! Owner bot added to db'))
+
+   
+            with open('BOTTOKEN.py' , 'w+') as f:
+                f.write(f'TOKEN=["{get_token_bot}"]')
+                f.close()
+
+
+
+            time.sleep(3.5)
+            clear_console()
+
+            main.bot.token = get_token_bot
+            main.bot.send_message(get_user_id, 'بات شما با موفقیت نصب شد ✅ \n برای شروع دستور : /start را بفرستید')
+            main.bot.polling(non_stop= True )
+            self.stdout.write('bot is running' , self.style.HTTP_SUCCESS )
+            
+
+        else :
+            clear_console()  
+            i = 3
+            while True:
+                if i > 0 :
+                    self.stdout.write(f'running in : {i}')
+                    time.sleep(1.5)
+                    clear_console()
+                    i -=1
+                else :
+                    break 
+            time.sleep(2)  
+            
+            clear_console()
+
+            self.stdout.write('--! Bot is Running !--' , self.style.HTTP_SUCCESS ,)   
+            main.bot.polling(non_stop= True )
+
+                
+
+
+#/ clear console
+def clear_console():
+    if os.name == 'nt':
+        os.system('cls')
+    else:
+        os.system('clear')

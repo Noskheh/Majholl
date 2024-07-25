@@ -1,30 +1,21 @@
-import telebot
+#all modules imported in here
+import telebot , re , json , BOTTOKEN , panelsapi
 from telebot.types import InlineKeyboardMarkup , InlineKeyboardButton 
 from mainrobot.models import users , admins , v2panel , products , inovices , payments , channels , subscriptions
 from keybuttons import BotkeyBoard as BotKb
-import string , random , re , decimal , json  
 from functions.USERS_onstarts import *
 from functions.PANEL_managing import *
 from functions.PRODUCTS_managing import *
 from functions.BUY_services import * 
 from functions.check_fun import *
-from BOTTOKEN import TOKEN
 from tools import QRcode_maker
 from bottext import *
-import panelsapi
-
-bot = telebot.TeleBot(token=TOKEN  , parse_mode="HTML" , colorful_logs= True)
+#------------------------------------------------------------
 
 
 
-#//TODO add feature of spliting text msg\'s 
+bot = telebot.TeleBot(token=BOTTOKEN.TOKEN[0], parse_mode="HTML", colorful_logs=True)
 #//TODO add /add_panel to the text if theres no plan for first time
-#//TODO add charge wallet message in admin side section
-
-
-
-
-
 #= Welcomer
 @bot.message_handler(func=lambda message: '/start' in message.text)
 def start_bot(message) :
@@ -37,7 +28,8 @@ def start_bot(message) :
         PRODUCT_RECEIVING_STATE['enable_product_adding'] = False
         CHANGING_PANEL_DETAILS.update({key : False for key in CHANGING_PANEL_DETAILS})
         CHNAGING_PRODUCT_DETAILS['Enable_Changing_Product_Deatails'] = False
-
+        USER_ADMIN_INFO['admin_name'] = False
+        USER_ADMIN_INFO['add_admin'] = False
         if message.from_user.id in marzban_panel_api_user:
             marzban_panel_api_user.pop(message.from_user.id)
         """  
@@ -69,21 +61,38 @@ def channels_joined(call):
 
 
 # -------------------------BUY SERVICES----------------------------------------------------------------------------------------
-#//TODO edit all text in bot.send messsage
+
 #> ./buy_services : selecting all plans if olny have on panel
 
-def create_product_entry():
-    return {
-        'panel_number': '',
-        'product_id': 0,
-        'product_name': '',
-        'data_limit': '',
-        'expire_date': '',
-        'pro_cost': '',
-        'withcapcity': 0,
-        'get_username': False,
-        'usernameforacc': '',
-        'statement': []}
+def create_product_entry(tamdid :bool =False):
+    if tamdid is False :
+        return {
+            'panel_number': '',
+            'product_id': 0,
+            'product_name': '',
+            'data_limit': '',
+            'expire_date': '',
+            'pro_cost': '',
+            'withcapcity': 0,
+            'get_username': False,
+            'usernameforacc': '',
+            'statement': []}
+
+    else:
+        return {
+            'panel_number': '',
+            'product_id': 0,
+            'product_name': '',
+            'data_limit': '',
+            'expire_date': '',
+            'pro_cost': '',
+            'withcapcity': 0,
+            'config_name':str,
+            'statement': []}
+    
+
+
+
 
 USERS_BASKET = {}
 
@@ -146,7 +155,7 @@ def handler_buy_service_one_panel(call):
 
 
 
-#> ./buy service : two panels buying
+#> ./buy service : two panels buying / TBSpanel = TWO PANEL BUY SERVICE
 @bot.callback_query_handler(func = lambda call : call.data.startswith('TBSpanel_pk_') or  call.data in ['back_main_menu_from_2more_panels' , 'back_to_main_menu_for_two_panels'])
 def handle_buy_service_two_panel(call):
 
@@ -199,11 +208,12 @@ def handle_buy_service_two_panel(call):
 def handle_buyService_select_proplan(call) :
     
     if call.data.startswith('buyservice_') :
-        USERS_BASKET[call.from_user.id]['get_username'] = True
-        call_data = call.data.split("_")
-        USERS_BASKET[call.from_user.id]['product_id'] = call_data[1]
-        USERS_BASKET[call.from_user.id]['statement'] = [call_data[2] , call_data[3] , call_data[4]] 
-        bot.edit_message_text(buy_service_section_choosing_username_msg , call.message.chat.id , call.message.message_id)
+        if call.from_user.id in USERS_BASKET:
+            USERS_BASKET[call.from_user.id]['get_username'] = True
+            call_data = call.data.split("_")
+            USERS_BASKET[call.from_user.id]['product_id'] = call_data[1]
+            USERS_BASKET[call.from_user.id]['statement'] = [call_data[2] , call_data[3] , call_data[4]] 
+            bot.edit_message_text(buy_service_section_choosing_username_msg , call.message.chat.id , call.message.message_id)
 
 
 
@@ -268,7 +278,6 @@ def get_username_for_config_name(message):
 def handle_selected_products(call) : 
 
     if call.data == 'verify_product' :
-
         bot.edit_message_text('⚪️ یک روش پرداخت را انتخاب نمایید' , call.message.chat.id , call.message.message_id , reply_markup=BotKb.payby_in_user_side()) 
 
 
@@ -445,6 +454,14 @@ def get_decline_reason(message):
         USER_PAYCARD_FISH.pop(message.from_user.id)
         payment_decline_reason_2.pop(message.from_user.id)
 
+
+
+
+
+
+
+
+
 # ---------------------------- service_status ----------------------------------------------------------------------------------------
 
 marzban_panel_api_user = {}
@@ -493,6 +510,401 @@ def show_services(call):
         else :
             bot.answer_callback_query(call.id , 'نمیتوانید از این پیام استفاده کنید')
             bot.send_message(call.message.chat.id , Text_0 , reply_markup=BotKb.show_service_status(call.from_user.id))            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ---------------------------- Tamdid_service ----------------------------------------------------------------------------------------
+
+TAMDID_PANEL_LOADING = {'panel_pk' : int , 'one_panel' : False , 'two_panel' : False}
+TAMDID_BASKETS_USER  = {}
+TAMDID_FISH = {}
+@bot.callback_query_handler(func= lambda call : call.data in ['tamdid_pay_with_wallet' ,'tamdid_pay_with_card' ,  'tamdid_service' , 'verify_product_for_tamdid'] or call.data.startswith(('Tamidi_' , 'tamdid_panelid_' , 'newingtamdid_')))
+def tamdid_service(call):
+
+
+    if call.data == 'tamdid_service':
+        Text_1= 'برای تمدید سرویس اشتراکی را که میخواهید انتخاب نمایید'
+        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.show_user_subsctription(call.from_user.id))
+
+
+
+
+    if call.data.startswith('Tamidi_'):
+        if v2panel.objects.all().count() <= 1: 
+            if plans_loading_for_one_panel() == 'panel_disable' :
+                bot.send_message(call.message.chat.id , '⌛️پنل در حال بروزرسانی میباشد . لطفا بعدا مراجعه فرمایید')
+            else : 
+                if isinstance(plans_loading_for_one_panel() , InlineKeyboardMarkup):
+                    bot.edit_message_text(buy_service_section_product_msg , call.message.chat.id , call.message.message_id , reply_markup = plans_loading_for_one_panel(tamdid=True))      
+                    subscriptions_name= f'{call.data.split("_")[1]}_{call.data.split("_")[2]}'
+                    
+
+                    TAMDID_PANEL_LOADING['one_panel'] = True
+                    TAMDID_PANEL_LOADING['panel_pk'] = v2panel.objects.all()[1].id
+
+                    if call.from_user.id not in TAMDID_BASKETS_USER:
+                            TAMDID_BASKETS_USER[call.from_user.id] = create_product_entry(tamdid=True)
+                    TAMDID_BASKETS_USER[call.from_user.id]['panel_number']= v2panel.objects.all()[1].id
+                    TAMDID_BASKETS_USER[call.from_user.id]['config_name'] = subscriptions_name
+
+            if plans_loading_for_one_panel() == 'sale_closed' :
+                bot.send_message(call.message.chat.id , '⛔️فروش سرویس بسته میباشد ، بعدا مراجعه فرمایید')
+
+            if plans_loading_for_one_panel() == 'sale_open_no_zarfit' :
+                bot.send_message(call.message.chat.id , '🪫ظرفیت فروش به اتمام رسیده است . بعدا مراجعه فرمایید')
+
+            if plans_loading_for_one_panel() == 'no_panel_product' : 
+                bot.send_message(call.message.chat.id , '‼️متاسفیم ، هنوز هیچ سرور یا محصولی برای ارائه وجود ندارد' )
+    
+        else :
+            subscriptions_name= f'{call.data.split("_")[1]}_{call.data.split("_")[2]}' 
+            keyboard = InlineKeyboardMarkup()
+            for i in v2panel.objects.all() :
+                button = InlineKeyboardButton(text=i.panel_name , callback_data=f'tamdid_panelid_{str(i.id)}_{subscriptions_name}')
+                keyboard.add(button)
+            button_back_2more = InlineKeyboardButton(text='بازگشت به منو اصلی🔙' , callback_data='tamdid_back_two_panel')
+            keyboard.add(button_back_2more)
+            bot.edit_message_text(buy_service_section_choosing_panel_msg , call.message.chat.id , call.message.message_id , reply_markup=keyboard)
+
+
+
+
+
+    if call.data.startswith('tamdid_panelid_') :
+            call_data = call.data.split('_')
+            state_panel = plans_loading_for_two_more_panel(panel_pk= call_data[2])
+            if state_panel == 'panel_disable':
+                bot.send_message(call.message.chat.id , '⌛️پنل در حال بروزرسانی میباشد . لطفا بعدا مراجعه فرمایید')
+            else :
+                if isinstance(state_panel , InlineKeyboardMarkup) :
+                    bot.edit_message_text(buy_service_section_product_msg , call.message.chat.id , call.message.message_id , reply_markup = plans_loading_for_two_more_panel(panel_pk= call_data[2] , tamdid=True))
+                    
+                    TAMDID_PANEL_LOADING['two_panel'] = True
+                    TAMDID_PANEL_LOADING['panel_pk'] = call_data[2]
+
+                    if call.from_user.id not in TAMDID_BASKETS_USER:
+                        TAMDID_BASKETS_USER[call.from_user.id] = create_product_entry(tamdid=True)
+
+                    TAMDID_BASKETS_USER[call.from_user.id]['panel_number'] =  call_data[2]
+                    TAMDID_BASKETS_USER[call.from_user.id]['config_name'] = f'{call.data.split("_")[3]}_{call.data.split("_")[4]}'
+
+            if state_panel == 'sale_closed':
+                bot.send_message(call.message.chat.id , '⛔️فروش سرویس بسته میباشد ، بعدا مراجعه فرمایید')
+
+            if  state_panel == 'sale_open_no_capcity':
+                bot.send_message(call.message.chat.id , '🪫ظرفیت فروش به اتمام رسیده است . بعدا مراجعه فرمایید')
+
+            if state_panel == 'no_products':
+                bot.send_message(call.message.chat.id , '‼️متاسفیم ، هنوز هیچ سرور یا محصولی برای ارائه وجود ندارد')
+
+
+
+
+
+
+
+    if call.data.startswith('newingtamdid_'):
+            call_data = call.data.split("_")
+            product_ = products.objects.get(id = call_data[1])
+            TAMDID_BASKETS_USER[call.from_user.id] ['product_id'] = call_data[1]
+            TAMDID_BASKETS_USER[call.from_user.id] ['product_name'] = product_.product_name
+            TAMDID_BASKETS_USER[call.from_user.id] ['data_limit'] = product_.data_limit
+            TAMDID_BASKETS_USER[call.from_user.id] ['expire_date'] = product_.expire_date
+            TAMDID_BASKETS_USER[call.from_user.id] ['pro_cost'] = product_.pro_cost
+
+            keyboard = InlineKeyboardMarkup()
+            button_1 = InlineKeyboardButton('✅ تایید محصول ' , callback_data= 'verify_product_for_tamdid')
+            button_2 = InlineKeyboardButton('↩️ بازگشت ' , callback_data = 'back_from_verfying')
+ 
+            keyboard.add(button_1 , button_2 , row_width = 2)
+
+            bot.edit_message_text(product_info_msg(TAMDID_BASKETS_USER[call.from_user.id] , tamdid=True) , call.message.chat.id , call.message.message_id ,  reply_markup=keyboard)
+
+
+
+    if call.data =='verify_product_for_tamdid':
+        Text_2 ='⚪️ یک روش پرداخت را انتخاب نمایید'
+        bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id , reply_markup=botkb.payby_in_user_side(tamdid=True , tamdid_card=True))
+
+
+
+    if call.data =='tamdid_pay_with_wallet':
+        req =tamdid_pay_with_wallet(call , bot , TAMDID_BASKETS_USER , TAMDID_PANEL_LOADING)
+              
+        if req =='requset_false'  :
+            print(f'requset is failed related to the api')
+        elif req is None:
+            print('due to isuffinet')
+        else :
+            bot.edit_message_text(paied_msg , call.message.chat.id , call.message.message_id)
+            how_to_send(req, int(TAMDID_BASKETS_USER[call.from_user.id]['panel_number']) , bot , call.from_user.id)
+            TAMDID_BASKETS_USER.pop(call.from_user.id)
+
+
+
+    if call.data =='tamdid_pay_with_card':
+        tamdid_pay_with_card(call , bot , TAMDID_BASKETS_USER , TAMDID_FISH)
+
+
+
+
+
+
+
+
+
+@bot.message_handler(func = lambda message : (message.from_user.id in TAMDID_FISH and len(TAMDID_FISH) > 0  and TAMDID_FISH[message.from_user.id]['tamdid_fish_send']) , content_types=['photo'])
+def getting_fish_image(message):
+
+    users_ = users.objects.get(user_id = message.from_user.id)
+    admins_ = admins.objects.all()
+    inovices_ = inovices.objects
+    
+    all_user_kbk_inovices = []
+
+    if TAMDID_FISH[message.from_user.id]['tamdid_fish_send'] == True :
+        for i in inovices_.filter(user_id = users_ , paid_status=2 , paid_mode='kbk').order_by('created_date') : #paid_status =2  / waiting for paying
+
+            all_user_kbk_inovices.append(i.id)
+
+
+        
+        if check_time_passed(all_user_kbk_inovices[-1]) == 'time_passed':
+            update_inovice_status = inovices_.get(id = int(all_user_kbk_inovices[-1]))   
+            update_inovice_status.paid_status = 0 # paid_status = 0 / unpaid due to passing time
+            update_inovice_status.save()
+            bot.send_message(message.chat.id , inovice_time_passed_msg)
+
+        else :
+            panel_id = TAMDID_PANEL_LOADING['panel_pk'] if TAMDID_PANEL_LOADING['one_panel'] == True else TAMDID_PANEL_LOADING['panel_pk']
+            panel_name = v2panel.objects.get(id = panel_id).panel_name
+            user_info = users.objects.get(user_id = message.from_user.id)  
+            for i in admins_:
+                    bot.send_photo(i.user_id , message.photo[-1].file_id , caption = send_user_buy_request_to_admins(TAMDID_BASKETS_USER[message.from_user.id] ,user_info , panel_name , tamdid=True ) , reply_markup= BotKb.agree_or_disagree(message.from_user.id , tamdid=True))
+            bot.send_message(message.chat.id ,send_success_msg_to_user)
+
+        TAMDID_FISH[message.from_user.id]['tamdid_accpet_or_reject'] = True
+
+
+
+
+
+@bot.callback_query_handler(func = lambda call : call.data.startswith('tamdid_agree_') or call.data.startswith('tamdid_disagree_') )
+def agree_or_disagree_kbk_payment(call):
+    
+    call_data = call.data.split('_')
+    user_basket = TAMDID_BASKETS_USER[int(call_data[-1])]
+    if call.data.startswith('tamdid_agree_')  and (int(call_data[-1]) in TAMDID_FISH and len(TAMDID_FISH) >=1 and  TAMDID_FISH[int(call_data[-1])]['tamdid_accpet_or_reject']) == True:
+
+                inovices_ = inovices.objects.all().filter(user_id=call_data[-1]).order_by('created_date').last()
+                inovices_.paid_status = 1
+                inovices_.save()
+
+
+                users_ = users.objects.get(user_id = call_data[-1])
+                inovivces2_ = inovices.objects.filter(user_id =users_).latest('created_date')
+                payments_ = payments.objects.create(user_id = users_ , amount = user_basket['pro_cost']  ,payment_stauts = 'accepted' , inovice_id = inovivces2_)
+
+                if TAMDID_PANEL_LOADING['one_panel'] == True :
+                        if  ('open' and 'withcapcity') or ('zarfit' and 'withcapcity') in user_basket['statement'] :
+                            check_capcity(TAMDID_PANEL_LOADING['panel_pk'])
+                else :
+                    if TAMDID_PANEL_LOADING['two_panel'] == True :
+                        if  ('open' and 'withcapcity') or ('zarfit' and 'withcapcity') in user_basket['statement']:
+                            check_capcity(TAMDID_PANEL_LOADING['panel_pk'])
+                
+
+
+                bot.send_message(call.message.chat.id , f'درخواست پرداخت یوزر : {call.message.chat.id} انجام شد')
+                bot.send_message(int(call_data[-1]) , paied_msg)
+                send_request = panelsapi.marzban(user_basket['panel_number']).put_user(user_basket['config_name'] , user_basket['product_id'] )
+                
+                
+                how_to_send(send_request , user_basket['panel_number'] , bot , int(call_data[-1]))
+
+
+                TAMDID_BASKETS_USER.pop(int(call_data[-1]))
+                TAMDID_FISH.pop(int(call_data[-1]))
+
+
+
+
+    if call.data.startswith('tamdid_disagree_')  and (int(call_data[-1]) in TAMDID_FISH and len(TAMDID_FISH) >=1 and  TAMDID_FISH[int(call_data[-1])]['tamdid_accpet_or_reject']) == True:
+            users_ = users.objects.get(user_id = call_data[-1])
+            inovices_ = inovices.objects.all().filter(user_id=users_).order_by('created_date').last()
+            inovices_.paid_status = 3
+            inovices_.save()
+
+            inovivces2_ = inovices.objects.filter(user_id =users_).latest('created_date')
+            payments_ = payments.objects.create(user_id = users_ , amount = user_basket['pro_cost'] ,payment_stauts = 'declined' , inovice_id = inovivces2_)
+
+            bot.send_message(call.message.chat.id , 'علت رد پرداخت را ارسال کنید')
+            if int(call_data[-1])  not in TAMDID_payment_decline_reason :
+                TAMDID_payment_decline_reason[int(call_data[-1])] = payment_decline_reason_create()
+
+            TAMDID_payment_decline_reason[int(call_data[-1])]['tamdid_reason'] = True
+            TAMDID_payment_decline_reason[int(call_data[-1])]['tamdid_user_id'] = int(call_data[-1])
+            TAMDID_FISH[int(call_data[-1])]['tamdid_accpet_or_reject'] = False
+
+
+
+
+
+
+def tamdid_payment_decline_reason_create():
+    tamdid_payment_decline_reason = {'tamdid_reason' : False  , 'tamdid_user_id' : int}
+    
+    return tamdid_payment_decline_reason
+
+TAMDID_payment_decline_reason={}
+
+
+
+# ./buy services > disagree of fish : getting reason
+@bot.message_handler(func= lambda message : (message.from_user.id in TAMDID_payment_decline_reason and len(TAMDID_payment_decline_reason) >=1 and TAMDID_payment_decline_reason[message.from_user.id]['tamdid_reason'] == True))
+def get_decline_reason(message):
+    
+    user_id = TAMDID_payment_decline_reason[message.from_user.id]['tamdid_user_id']
+    if TAMDID_payment_decline_reason[message.from_user.id]['tamdid_reason'] == True : 
+        payments_ = payments.objects.filter(user_id = TAMDID_payment_decline_reason[message.from_user.id]['tamdid_user_id']).latest('payment_time')
+        payments_.decline_reason = message.text
+        payments_.save()
+        bot.send_message(user_id , f'درخواست شما رد شد \n\n علت :‌ {message.text}')
+        bot.send_message(message.chat.id ,f'درخواست پرداخت یوزر :‌{TAMDID_payment_decline_reason[message.from_user.id]["tamdid_user_id"]} رد شد')
+        TAMDID_BASKETS_USER.pop(message.from_user.id)
+        TAMDID_FISH.pop(message.from_user.id)
+        TAMDID_payment_decline_reason.pop(message.from_user.id)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1373,7 +1785,135 @@ def get_changing_product_details_name(message):
 
 
 
+#---------------------------------------------------------------------------------------------------------------------------------#
+# -------------------------admins_management------------------------------------------------------------------------------------#
+# --------------------------------------------------------------------------------------------------------------------------------#
 
+
+#//TODO add مدیریت سطح دسترسی admins 
+#//TODO add functions to enable admins access 
+#//TODO make it better if you could
+
+USER_ADMIN_INFO = {'user_id':None , 'page_item':1 ,
+                   'add_admin':False ,'add_admin_id':int ,
+                     'admin_name' : False}
+
+@bot.callback_query_handler(func= lambda call  : call.data in ['admins_management', 'add_new_admin', 'back_from_admin_menu'] or call.data.startswith(('Anext_','Abefore_' ,'load_' , 'adminremove_')))
+def admins_management(call):
+    if call.data == 'admins_management':
+
+        bot.edit_message_text('برای مدیریت  ادمین ها بروی انها کلیک کیند ', call.message.chat.id , call.message.message_id , reply_markup=BotKb.show_admins())
+
+
+    if call.data.startswith('Anext_'):
+        user_id = USER_ADMIN_INFO['user_id'] if USER_ADMIN_INFO['user_id'] is not None else None
+        USER_ADMIN_INFO['page_item'] = int(call.data.split('_')[-1])
+        bot.edit_message_text('برای مدیریت  ادمین ها بروی انها کلیک کیند ' , call.message.chat.id, call.message.message_id,  reply_markup= BotKb.show_admins(who= user_id,page_items=int(call.data.split('_')[-1])))
+    
+
+    if call.data.startswith('Abefore_'):
+        user_id = USER_ADMIN_INFO['user_id'] if USER_ADMIN_INFO['user_id'] is not None else None
+        USER_ADMIN_INFO['page_item'] = int(call.data.split('_')[-1])
+        bot.edit_message_text('برای مدیریت  ادمین ها بروی انها کلیک کیند ' , call.message.chat.id, call.message.message_id,  reply_markup= BotKb.show_admins(who= user_id , page_items=int(call.data.split('_')[-1])))
+    
+
+    if call.data.startswith('load_'):
+        USER_ADMIN_INFO['user_id'] = int(call.data.split('_')[-1])
+        bot.edit_message_text('برای مدیریت  ادمین ها بروی انها کلیک کیند ' , call.message.chat.id, call.message.message_id,  reply_markup= BotKb.show_admins(who=int(call.data.split('_')[-1]) , page_items= USER_ADMIN_INFO['page_item']))
+
+
+    if call.data == 'add_new_admin':
+        USER_ADMIN_INFO['add_admin'] = True
+        bot.edit_message_text('ایدی عددی ادمین را وارد کنید' , call.message.chat.id , call.message.message_id)
+
+
+    if call.data.startswith('adminremove_'):
+        call_data = call.data.split('_')
+        try:
+        
+            admins_ = admins.objects.get(user_id = call_data[-1])
+            if admins_.is_owner ==1 :
+                bot.answer_callback_query(call.id , 'شما نمیتوانید اونر بات را حذف کنید')
+            else:
+                admins_.delete()
+                USER_ADMIN_INFO['user_id'] = None
+                bot.edit_message_text('✅یوزر با موفقیت از دیتابیس پاک  شد ' , call.message.chat.id , call.message.message_id , reply_markup= BotKb.show_admins())
+
+        except Exception as delete_admin_error:
+            print(f'error while deleteing admin from db // error msg : {delete_admin_error}')
+
+
+    if call.data =='back_from_admin_menu':
+            USER_ADMIN_INFO['admin_name'] = False
+            USER_ADMIN_INFO['add_admin'] = False
+            bot.edit_message_text('به مدیریت ربات خوش امدید' , call.message.chat.id , call.message.message_id , reply_markup= BotKb.management_menu_in_admin_side())
+
+
+
+
+
+
+@bot.message_handler(func= lambda message : (USER_ADMIN_INFO['admin_name'] == False and USER_ADMIN_INFO['add_admin'] == True) or (USER_ADMIN_INFO['admin_name'] == True and USER_ADMIN_INFO['add_admin'] == False))
+def add_new_admin(message):
+    if USER_ADMIN_INFO['add_admin'] == True and USER_ADMIN_INFO['admin_name'] == False:
+        if message.text.isdigit():
+            bot.send_message(message.chat.id, 'ایدی عددی ادمین جدید دریافت شد \n یک نام برای ادمین انتخاب کنید')
+            USER_ADMIN_INFO['add_admin'] = False
+            USER_ADMIN_INFO['admin_name'] = True
+            USER_ADMIN_INFO['add_admin_id'] = message.text
+        else:
+            bot.send_message(message.chat.id, 'ایدی باید به صورت عدد باشد نه حروف')
+        return  # Return to stop further execution in this call
+
+
+    if USER_ADMIN_INFO['admin_name'] == True and USER_ADMIN_INFO['add_admin'] == False:
+        try:
+            admins_ = admins.objects.create(admin_name=message.text, user_id=USER_ADMIN_INFO['add_admin_id'], is_admin=1, is_owner=0)
+        except Exception as error_admin_adding:
+            print(f'Error while adding admin to db: {error_admin_adding}')
+            bot.send_message(message.chat.id, 'خطایی در افزودن ادمین به دیتابیس رخ داد')
+            return
+        
+        bot.send_message(message.chat.id, 'ادمین با موفقیت به دیتابیس اضافه شد ✅', reply_markup=BotKb.show_admins())
+        USER_ADMIN_INFO['admin_name'] = False
+        USER_ADMIN_INFO['add_admin'] = False
+        return  # Return to stop further execution in this call
+
+
+
+
+
+#---------------------------------------------------------------------------------------------------------------------------------#
+# -------------------------bot_statics------------------------------------------------------------------------------------#
+# --------------------------------------------------------------------------------------------------------------------------------#
+
+
+#//TODO add diffrent statics to the bot
+#//TODO add inline keyboard to this section > for example : which user buy the most , which product have been sold a lot , which panel has a lot user and other things in another versions
+
+@bot.callback_query_handler(func= lambda call: call.data in ['bot_statics' , 'back_from_bot_statics'])
+def bot_statics(call):
+    if call.data =='bot_statics':
+        user_ = users.objects.all().count()
+        inovices_ = inovices.objects.all().count()
+        payment_ = payments.objects.filter(payment_stauts = 'accepted').all().count()
+        v2panel_ = v2panel.objects.all().count()
+        product_ = products.objects.all().count()
+        Text_1 = f"""
+
+        آمار ربات به صورت زیر میباشد
+👤 تعداد کل یوزر های ربات: {user_}
+🎛 تعداد کل پنل های متصل به ربات: {v2panel_}
+🔖تعداد کل محصولات ربات : {product_}
+🛍 تعداد کل پرداختی ها : {payment_}
+📃 تعداد کل فاکتور های صادر شده : {inovices_}
+        """
+        keyboard = InlineKeyboardMarkup().add(InlineKeyboardButton('بازگشت به منوی قبلی↪️' , callback_data='back_from_bot_statics'))
+        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=keyboard)
+
+
+    if call.data == 'back_from_bot_statics':
+        bot.edit_message_text('به مدیریت ربات خوش امدید', call.message.chat.id , call.message.message_id , reply_markup= BotKb.management_menu_in_admin_side())
 
 
 
@@ -1383,6 +1923,7 @@ def get_changing_product_details_name(message):
 # ---------------------------------------------------------------------------------------------------------------------------------#
 
 wallet_profile_dict = {'charge_wallet': False ,'waiting_for_USER_FISH' : False ,
+                       
                        'tranfert_money_from_wallet' : False , 'get_amount_to_transefer' : False , 'user_id' : None}
 
 
