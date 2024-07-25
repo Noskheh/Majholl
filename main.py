@@ -16,6 +16,17 @@ from bottext import *
 
 bot = telebot.TeleBot(token=BOTTOKEN.TOKEN[0], parse_mode="HTML", colorful_logs=True)
 #//TODO add /add_panel to the text if theres no plan for first time
+#//TODO back from service status not working
+#//TODO avoid user from entering tamdid service when they have no config : done
+#//TODO panel static (امار پنل مرزبان )
+#//TODO remove any unnessecry print() function : done
+#//TODO enable owner to add channel or channels in database : in proccess
+#//TODO enable user to add his card : in proccess
+#//TODO add feature to increese or decreese user wallet
+#//TODO remove space before the links in how_to_send functions : done
+
+
+
 #= Welcomer
 @bot.message_handler(func=lambda message: '/start' in message.text)
 def start_bot(message) :
@@ -466,18 +477,21 @@ def get_decline_reason(message):
 
 marzban_panel_api_user = {}
 
-@bot.callback_query_handler(func= lambda call: call.data in ['service_status' ,  'get_config_link' , 'get_qrcode_link']  or call.data.startswith(('serviceshow_' , 'get_new_link')))
+@bot.callback_query_handler(func= lambda call: call.data in ['service_status' ,  'get_config_link' , 'get_qrcode_link' , 'back_from_service_status' , 'back_from_user_service_status']  or call.data.startswith(('serviceshow_' , 'get_new_link')))
 def show_services(call):
     Text_0 = 'برای نمایش وضعیت سرویس بر روی آن کلیک کنید'
 
     if call.data=='service_status':
         bot.edit_message_text(Text_0 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.show_service_status(call.from_user.id))
 
+
+
     if call.data.startswith('serviceshow_'):
         call_data = call.data.split('_')
         Text_1 = 'وضعیت فعلی سرویس شما'
         subscriptions_ = subscriptions.objects.get(user_subscription=  f'{call_data[2]}_{call_data[3]}')
         request = panelsapi.marzban(int(subscriptions_.panel_id.pk)).get_user( f'{call_data[2]}_{call_data[3]}')
+
         marzban_panel_api_user[call.from_user.id]=request
         bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.user_service_status(call_data[1] , request))
 
@@ -512,8 +526,11 @@ def show_services(call):
             bot.send_message(call.message.chat.id , Text_0 , reply_markup=BotKb.show_service_status(call.from_user.id))            
 
 
+    if call.data =='back_from_service_status':
+        bot.edit_message_text(welcome_msg , call.message.chat.id , call.message.message_id , reply_markup=BotKb.main_menu_in_user_side(call.from_user.id))
 
-
+    if call.data =='back_from_user_service_status':
+        bot.edit_message_text(Text_0 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.show_service_status(call.from_user.id))
 
 
 
@@ -533,13 +550,32 @@ def show_services(call):
 TAMDID_PANEL_LOADING = {'panel_pk' : int , 'one_panel' : False , 'two_panel' : False}
 TAMDID_BASKETS_USER  = {}
 TAMDID_FISH = {}
-@bot.callback_query_handler(func= lambda call : call.data in ['tamdid_pay_with_wallet' ,'tamdid_pay_with_card' ,  'tamdid_service' , 'verify_product_for_tamdid'] or call.data.startswith(('Tamidi_' , 'tamdid_panelid_' , 'newingtamdid_')))
+@bot.callback_query_handler(func= lambda call : call.data in ['tamdid_pay_with_wallet' ,'tamdid_pay_with_card' ,  'tamdid_service' , 'verify_product_for_tamdid' ,'back_from_user_tamdid_service' , 'tamdid_back_two_panel' , 'back_from_verfying_tamdid', 'back_from_payment_tamdid'] or call.data.startswith(('Tamidi_' , 'tamdid_panelid_' , 'newingtamdid_')))
 def tamdid_service(call):
 
 
     if call.data == 'tamdid_service':
+        user_sub = BotKb.show_user_subsctription(call.from_user.id)
         Text_1= 'برای تمدید سرویس اشتراکی را که میخواهید انتخاب نمایید'
-        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.show_user_subsctription(call.from_user.id))
+        if user_sub =='no_sub_user_have':
+            bot.answer_callback_query(call.id , 'شما هیچ سرویسی برای تمدید ندارید ')
+
+        else:
+            bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.show_user_subsctription(call.from_user.id))
+
+
+    #back - buttons
+    if call.data in ['back_from_user_tamdid_service', 'tamdid_back_two_panel']:
+        bot.edit_message_text(welcome_msg , call.message.chat.id , call.message.message_id , reply_markup=BotKb.main_menu_in_user_side(call.from_user.id))        
+
+
+    #back - buttons
+    if call.data in ['back_from_verfying_tamdid' , 'back_from_payment_tamdid']:
+        bot.answer_callback_query(call.id , 'ادامه تمدید محصول لغو گردید')
+        bot.edit_message_text(welcome_msg , call.message.chat.id , call.message.message_id , reply_markup=BotKb.main_menu_in_user_side(call.from_user.id))        
+        
+
+
 
 
 
@@ -629,7 +665,7 @@ def tamdid_service(call):
 
             keyboard = InlineKeyboardMarkup()
             button_1 = InlineKeyboardButton('✅ تایید محصول ' , callback_data= 'verify_product_for_tamdid')
-            button_2 = InlineKeyboardButton('↩️ بازگشت ' , callback_data = 'back_from_verfying')
+            button_2 = InlineKeyboardButton('↩️ بازگشت ' , callback_data = 'back_from_verfying_tamdid')
  
             keyboard.add(button_1 , button_2 , row_width = 2)
 
@@ -639,7 +675,7 @@ def tamdid_service(call):
 
     if call.data =='verify_product_for_tamdid':
         Text_2 ='⚪️ یک روش پرداخت را انتخاب نمایید'
-        bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id , reply_markup=botkb.payby_in_user_side(tamdid=True , tamdid_card=True))
+        bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id , reply_markup=botkb.payby_in_user_side(tamdid=True ))
 
 
 
@@ -789,125 +825,6 @@ def get_decline_reason(message):
         TAMDID_BASKETS_USER.pop(message.from_user.id)
         TAMDID_FISH.pop(message.from_user.id)
         TAMDID_payment_decline_reason.pop(message.from_user.id)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1494,7 +1411,7 @@ def select_inbounds(call):
                 else:
                     values=i + '✅'
                     inbounds_list[index_inboundlist]=values  
-        print(INBOUND_SELECTOR)
+
         inbounds_checkmark=[]
         for i in INBOUND_SELECTOR['Inbounds']:
             if  '✅' in i:
@@ -1914,6 +1831,30 @@ def bot_statics(call):
 
     if call.data == 'back_from_bot_statics':
         bot.edit_message_text('به مدیریت ربات خوش امدید', call.message.chat.id , call.message.message_id , reply_markup= BotKb.management_menu_in_admin_side())
+
+#---------------------------------------------------------------------------------------------------------------------------------#
+# -------------------------bot_management------------------------------------------------------------------------------------#
+# --------------------------------------------------------------------------------------------------------------------------------#
+@bot.callback_query_handler(func= lambda call: call.data=='bot_managment')
+def bot_managment(call):
+    bot.edit_message_text('به قسمت تنظیمات ربات خوش امدید ' , call.message.chat.id , call.message.message_id , reply_markup=BotKb.bot_management())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

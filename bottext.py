@@ -68,13 +68,13 @@ def buy_service_section_product_send(link_kind , link=None , image_only=None):
     buy_service_section_product_send = f"""
 ┐🛍محصول شما حاضر شد
  ─🧷نوع لینک : {link_kind}
-┘  لینک شما :‌ \n <code> {link} </code> 
+┘  لینک شما :‌ \n<code>{link}</code> 
 """
     
     if image_only is not None:
         buy_service_section_product_image_send = f"""
 ┐🛍محصول شما حاضر شد
- ─🧷نوع لینک : {link_kind}
+ ─🧷نوع لینک :{link_kind}
 """ 
         return buy_service_section_product_image_send
         
@@ -85,8 +85,8 @@ def buy_service_section_product_send(link_kind , link=None , image_only=None):
 def buy_service_section_card_to_card_msg(cost): 
     payment_setting_ = payment_setting.objects.all()
     for i in payment_setting_:
-        bank_kard = i.bank_kard
-        bank_owner = i.back_onwername
+        bank_kard = i.bank_card
+        bank_owner = i.bank_ownername
         bank_name = i.bank_name
 
     kard = [str(bank_kard)[i : i+4] for i in range(0 , len(str(bank_kard)) , 4)]

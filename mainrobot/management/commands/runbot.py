@@ -45,6 +45,7 @@ class Command(BaseCommand):
             
 
         else :
+
             clear_console()  
             i = 3
             while True:
@@ -56,7 +57,6 @@ class Command(BaseCommand):
                 else :
                     break 
             time.sleep(2)  
-            
             clear_console()
 
             self.stdout.write('--! Bot is Running !--' , self.style.HTTP_SUCCESS ,)   

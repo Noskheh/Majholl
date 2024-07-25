@@ -129,8 +129,8 @@ class payments(models.Model):
 
 class payment_setting(models.Model):
     bank_name = models.CharField(max_length=56 , null=True , blank= True)
-    back_onwername = models.CharField(max_length=124 , null= True , blank=True)
-    bank_kard = models.BigIntegerField(null=True , blank=True)
+    bank_ownername = models.CharField(max_length=124 , null= True , blank=True)
+    bank_card = models.BigIntegerField(null=True , blank=True)
     bank_status = models.SmallIntegerField(default= 1 , null=False)
 
     class Meta:

@@ -68,13 +68,6 @@ def plans_loading_for_one_panel(tamdid:bool= False) :
 
 
 
-
-
-
-
-
-
-
 # handling two panel or more
 def plans_loading_for_two_more_panel(panel_pk : int , tamdid:bool = False ) :
 
@@ -134,26 +127,6 @@ def plans_loading_for_two_more_panel(panel_pk : int , tamdid:bool = False ) :
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #-pay with wallet
 def pay_with_wallet( call , bot , product_dict , panel_loaded ):
     info = product_dict[call.from_user.id]
@@ -202,11 +175,6 @@ def pay_with_wallet( call , bot , product_dict , panel_loaded ):
 
 
 
-
-
-
-
-
 #-Tamidi pay with wallet
 def tamdid_pay_with_wallet(call , bot , product_dict , panel_loaded):
     info = product_dict[call.from_user.id]
@@ -250,27 +218,6 @@ def tamdid_pay_with_wallet(call , bot , product_dict , panel_loaded):
             return 'requset_false'
         else :
             return send_request 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -342,30 +289,6 @@ def tamdid_pay_with_card(call , bot , product_dict , user_fish ):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def create_inovices(user_id  , panel_name , product_name , data_limit , expire_date , pro_cost ,  paid_status , kind_pay ,config_name : None , paid_mode : str , gift_code : int = None , discount : int = None , user_username : str = None):
      
      
@@ -391,13 +314,6 @@ def create_inovices(user_id  , panel_name , product_name , data_limit , expire_d
 
 
 
-
-
-
-
-
-
-
 def how_to_send(request_ , panel_id , BOT , call_userid):
     panel_ = v2panel.objects.get(id= panel_id)
 
@@ -414,7 +330,7 @@ def how_to_send(request_ , panel_id , BOT , call_userid):
 
         elif panel_.send_links_mode == 2: #config link  
             BOT.send_photo(call_userid , caption= buy_service_section_product_send('لینک هوشمند به همراه لینک کانفیگ' , '👇🏻') , photo= qr_code_subscription)
-            BOT.send_message(call_userid , f'<code> {link} </code>')
+            BOT.send_message(call_userid , f'<code>{link}</code>')
 
 
         elif panel_.send_links_mode == 0 : # dont using links in caption
