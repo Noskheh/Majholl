@@ -271,6 +271,7 @@ def change_panel_allcapcity(panel_id , BOT , message , panel_dict):
                 panel_=v2panel.objects.get(id=panel_id)
                 panel_new_all_capcity=message.text
                 panel_.all_capcity=panel_new_all_capcity
+                panel_.sold_capcity = 0
                 panel_.save()
                 panel_dict['All_Capcity']=False 
             except Exception as change_allcapcity :

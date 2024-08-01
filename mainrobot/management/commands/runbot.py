@@ -15,7 +15,7 @@ class Command(BaseCommand):
             get_token_bot = input(self.style.HTTP_INFO('step-2 : Send me your token bot >>?'))
             get_user_passwd = getpass.getpass(self.style.HTTP_INFO('step-3 : Send me a password >>? '))
             confirmation_passwd  = getpass.getpass(self.style.HTTP_INFO('step-4 : Send me password again >>?'))
-
+            
             is_owner = input(self.style.HTTP_INFO('step-5 : Is owner (true/false) >>?'))
             time.sleep(2)
 
@@ -25,7 +25,7 @@ class Command(BaseCommand):
             if  is_owner in ['true' , 'false' , 't' , 'f', 'True', 'False', 'yes','yes' ,'No','no']:
                 owner = 1 
                 
-            admins.objects.create(user_id = get_user_id , is_admin = owner , is_owner = owner , password=get_user_passwd)
+            admins.objects.create(user_id = get_user_id , is_admin = owner , is_owner = owner , password=get_user_passwd , admin_name ='Owner')
             self.stdout.write(self.style.SUCCESS('Successfully !! Owner bot added to db'))
 
    
@@ -40,9 +40,8 @@ class Command(BaseCommand):
 
             main.bot.token = get_token_bot
             main.bot.send_message(get_user_id, 'بات شما با موفقیت نصب شد ✅ \n برای شروع دستور : /start را بفرستید')
-            main.bot.polling(non_stop= True )
             self.stdout.write('bot is running' , self.style.HTTP_SUCCESS )
-            
+            main.bot.infinity_polling()
 
         else :
 
@@ -56,11 +55,11 @@ class Command(BaseCommand):
                     i -=1
                 else :
                     break 
-            time.sleep(2)  
+            time.sleep(2)
             clear_console()
 
             self.stdout.write('--! Bot is Running !--' , self.style.HTTP_SUCCESS ,)   
-            main.bot.polling(non_stop= True )
+            main.bot.infinity_polling
 
                 
 

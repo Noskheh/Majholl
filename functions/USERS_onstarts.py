@@ -15,6 +15,8 @@ def CHECK_USER_EXITENCE(UserId , UserFirstName , UserLastName , UserUserName , U
         return User_ , True 
 
 
+
+
 #= check user in channel or not
 def FORCE_JOIN_CHANNEL(UserId, Bot):
     Users_ = users.objects.get(user_id=UserId)
@@ -25,8 +27,6 @@ def FORCE_JOIN_CHANNEL(UserId, Bot):
         Membership_ = Bot.get_chat_member(i.channel_url or i.channel_id, Users_.user_id).status
         state[i.channel_id] = Membership_
 
-    
-    
     # Check all membership statuses
     for membership_status in state.values():
         if membership_status == 'left':

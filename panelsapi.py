@@ -27,10 +27,8 @@ class marzban:
 
     def add_user(self , username , product_id):
         #- https://marzban:port/api/user
+
         panel_url = self.panel_url + '/api/user'
-        #موقعه خرید محصول باید اینباند ها رو لود کنیم
-        #, product_id:int=None
-        # products_ = products.objects.get()
         product_ = products.objects.get(id = product_id)
         data_expire = product_.expire_date
         data_limit = float(product_.data_limit)
@@ -51,14 +49,18 @@ class marzban:
             "on_hold_timeout": "2023-11-03T20:30:00",
             "on_hold_expire_duration": 0
                 }
-        get_header = marzban.get_token_acces(self)
-        add_user_request = requests.post(panel_url , json= proxy_dict , headers= get_header)
-        
-        if add_user_request.status_code == 200:
-            return json.loads(add_user_request.content)
-        else :
-            return False
-        
+        try : 
+            get_header = marzban.get_token_acces(self)
+            add_user_request = requests.post(panel_url , json= proxy_dict , headers= get_header)
+            
+            if add_user_request.status_code == 200:
+                return json.loads(add_user_request.content)
+            else :
+                return False
+            
+        except Exception as adduser_error:
+            print(f'api says : {adduser_error}')
+            
 
 
     def put_user(self , user_name , product_id):
@@ -120,7 +122,18 @@ class marzban:
         else :
             return f'{username} not found'
        
-        
+       
+    def remove_user(self , username):
+        panel_url = self.panel_url + f'/api/user/{username}'
+        get_header = marzban.get_token_acces(self)
+        remove_user_request = requests.delete(panel_url , headers=get_header)
+        if remove_user_request.status_code == 200:
+            return True
+        else:
+            False
+
+
+
     def revoke_sub(self, username):
         panel_url = self.panel_url + f'/api/user/{username}/revoke_sub'
         get_header = marzban.get_token_acces(self)

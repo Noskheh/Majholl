@@ -1,8 +1,6 @@
-import telebot
 from telebot.types import InlineKeyboardMarkup , InlineKeyboardButton
 from mainrobot.models import v2panel , products , admins , users , channels , subscriptions
-from typing import Union , List
-import re , panelsapi , datetime , jdatetime
+import re ,  datetime , jdatetime
 
 
 
@@ -71,14 +69,14 @@ class BotkeyBoard:
 
             
 # -------------------------Channels----------------------------------------------------------------------------------------
+    
+    
+    
     @staticmethod
     def load_channels(bot , Userid):
         keyboard = InlineKeyboardMarkup()
-
-        
         channels_ = channels.objects.all()
         channel_list = []
-
         for i in channels_:
             user_joined = bot.get_chat_member(i.channel_url or i.channel_id  , Userid).status
             if user_joined == 'left':
@@ -89,6 +87,9 @@ class BotkeyBoard:
         button_start=InlineKeyboardButton('✅جوین شدم' , callback_data='channels_joined')
         keyboard.add(*channel_list , button_start ,  row_width=1)
         return keyboard
+
+
+
 
 
 # -------------------------PANEL MANAGEMENT----------------------------------------------------------------------------------------
@@ -275,9 +276,12 @@ class BotkeyBoard:
                 sale_mode='بسته'
             elif i.panel_sale_mode==1:
                 sale_mode='باز'
-            all_capcity = (int(i.sold_capcity) + int(i.all_capcity)) if i.all_capcity > 0 and i.all_capcity >= i.sold_capcity else 0
+            all_capcity =  int(i.all_capcity) if i.all_capcity > 0  else 0
+
             sold_capcity = i.sold_capcity if i.sold_capcity > 0 else 0
-            remaing_capacity=(int(all_capcity) - int(i.sold_capcity)) if i.all_capcity > 0 else 0
+
+            remaing_capacity= (int(all_capcity) - int(i.sold_capcity)) if i.all_capcity > 0 else 0
+
             panel_capcity_buttons=[[(capcity_mode , 'capcity_mode') , ('🎚نوع ظرفیت ' , 'capcity_mode')] ,
                                     [(sale_mode , 'sale_mode') , ('💸حالت فروش' , 'sale_mode')] ,
                                     [(f"{abs(all_capcity)} عدد" , f'all_capcity_{i.all_capcity}') , ('🔋ظرفیت کلی' , f'all_capcity_{i.all_capcity}')] ,
@@ -623,7 +627,44 @@ class BotkeyBoard:
         keyboard.add(done_buttons , back_buttons)
         return keyboard 
 
+
+
+
+
+
+
+
 # -------------------------BUY SECTION----------------------------------------------------------------------------------------
+
+
+
+    @staticmethod 
+    def chosing_panels_in_buying_section():
+        panels_ = v2panel.objects.all()
+        keyboard = InlineKeyboardMarkup()
+
+        buttons_panel_list = []
+        if panels_.count() >= 2:
+            for i in panels_:
+                button = InlineKeyboardButton(text= str(i.panel_name), callback_data=f'TBSpanel_pk_{str(i.id)}')
+                buttons_panel_list.append(button)
+            button_back = InlineKeyboardButton(text='✤ - بازگشت به منوی قبلی - ✤' , callback_data='back_from_chosing_panels_buying')
+        keyboard.add(*buttons_panel_list , button_back , row_width=1)
+
+        return keyboard
+
+
+
+    @staticmethod
+    def confirmation():
+        keyboard = InlineKeyboardMarkup()
+
+        button_1 = InlineKeyboardButton('✅ تایید محصول ' , callback_data= 'verify_product')
+        button_2 = InlineKeyboardButton('✤ - بازگشت به منوی قبلی - ✤' , callback_data = 'back_from_verfying')
+        
+        keyboard.add(button_1 , button_2 , row_width = 1)
+        
+        return keyboard
 
 
 
@@ -631,16 +672,18 @@ class BotkeyBoard:
 
     @staticmethod 
     def payby_in_user_side(tamdid:bool= False ):
+        keyboard = InlineKeyboardMarkup()
         
         data_wallet = 'pay_with_wallet' if tamdid is False else 'tamdid_pay_with_wallet'
         data_card = 'pay_with_card' if tamdid is False else 'tamdid_pay_with_card'
         back_data = 'back_from_payment' if tamdid is False else 'back_from_payment_tamdid'
 
-        pay_options = [('پرداخت با کیف پول' , data_wallet) , ('پرداخت کارت به کارت' , data_card) , ('بازگشت به منوی اصلی🔙' , back_data)]
-        keyboard = InlineKeyboardMarkup()
+        pay_options = [('👝 پرداخت با کیف پول' , data_wallet) , ('💳پرداخت کارت به کارت' , data_card) , ('✤ - بازگشت به منوی قبلی - ✤' , back_data)]
+        
         for text , data in pay_options :     
             buttons = InlineKeyboardButton(text = text , callback_data = data)
             keyboard.add(buttons , row_width = 1)
+        
         return keyboard
     
 
@@ -649,18 +692,97 @@ class BotkeyBoard:
 
 
     @staticmethod 
-    def agree_or_disagree(user_id , tamdid:bool=None): # 1 = خرید مستقیم با ارسال عکس رسید = 0 \  شارژ کیف پول با ارسال عکس رسید
+    def agree_or_disagree(user_id , tamdid:bool=None):
         keyboard = InlineKeyboardMarkup()
         data_agree =  f'agree_{user_id}' if tamdid is None else   f'tamdid_agree_{user_id}'
         data_disagree = f'disagree_{user_id}' if tamdid is None else  f'tamdid_disagree_{user_id}'
 
-        rows = [InlineKeyboardButton(text ='تایید پرداخت', callback_data = data_agree),
-                InlineKeyboardButton(text ='رد پرداخت', callback_data = data_disagree)]
+        rows = [InlineKeyboardButton(text ='✅ تایید پرداخت ', callback_data = data_agree),
+                InlineKeyboardButton(text ='❌ رد پرداخت ', callback_data = data_disagree)]
         
         keyboard.add(*rows)
         
         return keyboard    
     
+
+
+
+
+# ------------------------- User_service status ----------------------------------------------------------------------------------------
+    @staticmethod
+    def show_service_status(user_id):
+        keyboard = InlineKeyboardMarkup()
+        users_ = users.objects.get(user_id = user_id)
+        subscriptions_ = subscriptions.objects.filter(user_id = users_).order_by('date_created').reverse()
+
+        buttons_list = []
+        for i in subscriptions_:
+            buttons = InlineKeyboardButton(text= i.user_subscription , callback_data=f'serviceshow.{users_.user_id}.({i.user_subscription})')
+            buttons_list.append(buttons)
+        button_back = InlineKeyboardButton(text='✤ - بازگشت به منوی قبلی - ✤'  , callback_data='back_from_service_status')
+        button_notinlist = InlineKeyboardButton(text='🚦 سرویس من در لیست نیست 🚦'  , callback_data='service_not_inlist')
+
+        keyboard.add(*buttons_list , button_notinlist , button_back , row_width=1)
+
+        return keyboard
+    
+
+
+
+    @staticmethod 
+    def user_service_status(user_id , request):
+        keyboard = InlineKeyboardMarkup( )
+        users_ = users.objects.get(user_id = user_id)
+        
+        service_status = '✅ فعال' if request['status'] == 'active' else '❌ غیر فعال'
+        used_traffic = request['used_traffic'] / ( 1024 * 1024 * 1024)
+
+
+        online_at = request['online_at'] if request['online_at'] is not None else 'empty'
+        if online_at != 'empty':
+            dt = datetime.datetime.strptime(online_at.split('.')[0], '%Y-%m-%dT%H:%M:%S')
+            last_online = jdatetime.datetime.fromgregorian(datetime=dt)
+        else:
+            last_online = 'بدون اتصال'
+
+        buttons_list = [
+                    [(f'{service_status} ' , f'{service_status}') , ('وضعیت سرویس ' , 'en_di_service')] , 
+                    [(f'{round(used_traffic , 2)} گیگ ' , f'{round(used_traffic , 2)}') , ('🔋حجم مصرفی', 'config_usage')],
+                    [(f'{str(last_online)}' ,f'{str(last_online)}') , ('👁‍🗨زمان آخرین اتصال' , 'last_connection')] ,
+                    [('📥 دریافت لینک اشتراک' , 'get_config_link') , ('🖼 دریافت QRcode اشتراک' , 'get_qrcode_link')]]
+        
+        button_list = []
+        for row in buttons_list:
+            for text , data in row:
+                buttons = InlineKeyboardButton(text= text , callback_data=data)
+                button_list.append(buttons)
+        back_button = InlineKeyboardButton('✤ - بازگشت به منوی قبلی - ✤' , callback_data='back_from_user_service_status')
+        get_new_link = InlineKeyboardButton('❌ حذف لینک فعلی و دریافت لینک جدید ❌',  callback_data='get_new_link')
+        get_removing_account = InlineKeyboardButton('❌ حذف کامل اشتراک ❌' , callback_data='get_removing_account')
+        keyboard.add(*button_list , row_width=2)
+        keyboard.add(get_new_link, get_removing_account, back_button ,row_width=1)
+
+        return keyboard
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ------------------------- Wallet Profile ----------------------------------------------------------------------------------------
     @staticmethod 
@@ -712,64 +834,6 @@ class BotkeyBoard:
         return keyboard  
     
 
-# ------------------------- User_service status ----------------------------------------------------------------------------------------
-    @staticmethod
-    def show_service_status(user_id):
-        keyboard = InlineKeyboardMarkup()
-        users_ = users.objects.get(user_id = user_id)
-        subscriptions_ = subscriptions.objects.filter(user_id = users_)
-
-        buttons_list = []
-        for i in subscriptions_:
-            buttons = InlineKeyboardButton(text= i.user_subscription , callback_data=f'serviceshow_{users_.user_id}_{i.user_subscription}')
-            buttons_list.append(buttons)
-        button_back = InlineKeyboardButton(text='↪️بازگشت به منوی قبلی'  , callback_data='back_from_service_status')
-        button_notinlist = InlineKeyboardButton(text='سرویس من در لیست نیست'  , callback_data='service_not_inlist')
-
-        keyboard.add(*buttons_list , button_notinlist , button_back , row_width=1)
-
-        return keyboard
-    
-
-
-
-    @staticmethod 
-    def user_service_status(user_id , request):
-        keyboard = InlineKeyboardMarkup( )
-        users_ = users.objects.get(user_id = user_id)
-        
-        service_status = '✅' if request['status'] == 'active' else '❌'
-        used_traffic = request['used_traffic'] / ( 1024 * 1024 * 1024)
-
-        expire_dt = jdatetime.datetime.fromtimestamp(request['expire'])
-
-        online_at = request['online_at'] if request['online_at'] is not None else 'empty'
-        if online_at != 'empty':
-            dt = datetime.datetime.strptime(online_at.split('.')[0], '%Y-%m-%dT%H:%M:%S')
-            last_online = jdatetime.datetime.fromgregorian(datetime=dt)
-        else:
-            last_online = 'بدون اتصال'
-
-        buttons_list = [
-                    [(f'{service_status}' , f'{service_status}') , ('وضعیت سرویس ' , 'en_di_service')] , 
-                    [(f'{round(used_traffic , 2)}' , f'{round(used_traffic , 2)}') , ('🔋حجم مصرفی', 'config_usage')],
-                    [(f'{str(expire_dt)}' , 'expire_dtime') , ('⏳تاریخ انقضا' , 'expire_dtime')] , 
-                    [(f'{str(last_online)}' ,f'{str(last_online)}') , ('👁‍🗨زمان آخرین اتصال' , 'last_connection')] ,
-
-                    [('دریافت لینک اشتراک' , 'get_config_link') , ('دریافت QRcode اشتراک' , 'get_qrcode_link')] , 
-                    [('حذف لینک فعلی و دریافت لینک جدید', 'get_new_link')]]
-        
-        bt_list = []
-        for row in buttons_list:
-            for text , data in row:
-                buttons = InlineKeyboardButton(text= text , callback_data=data)
-                bt_list.append(buttons)
-        back_button = InlineKeyboardButton('بازگشت به منوی قبلی↪️' , callback_data='back_from_user_service_status')
-        keyboard.add(*bt_list , row_width=2)
-        keyboard.add(back_button )
-
-        return keyboard
-    
 # ------------------------- tamdidi_service ----------------------------------------------------------------------------------------
     @staticmethod
     def show_user_subsctription(user_id):
@@ -848,7 +912,7 @@ class BotkeyBoard:
                items_button.pop(indx)
                items_button.insert(indx , admins_.first())
         
-
+        buttons_bottom_list = []
 
         if len(items_button) ==1:
             buttons_bottom_list = [[(f'{items_button[0].admin_name}-{items_button[0].user_id}' , f'load_{items_button[0].user_id}')],
@@ -875,13 +939,17 @@ class BotkeyBoard:
 
 
         bottom_list = []
+        
         for bottom in buttons_bottom_list:
             for text , data in bottom:
                 button = InlineKeyboardButton(text= text , callback_data=data)
                 bottom_list.append(button)
+
         back_admin_buttons = InlineKeyboardButton('بازگشت به منوی قبلی↪️' , callback_data='back_from_admin_menu')
         admin_add = InlineKeyboardButton('➕اضافه کردن ادمین ' , callback_data='add_new_admin')
+        
         keyboard.add(*bottom_list, row_width=2)
+
         keyboard.add(admin_add , back_admin_buttons ,  row_width=1)
 
         return keyboard 
