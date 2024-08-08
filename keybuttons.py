@@ -1,5 +1,5 @@
 from telebot.types import InlineKeyboardMarkup , InlineKeyboardButton
-from mainrobot.models import v2panel , products , admins , users , channels , subscriptions
+from mainrobot.models import v2panel , products , admins , users , channels , subscriptions , botsettings , shomarekart
 import re ,  datetime , jdatetime
 
 
@@ -52,7 +52,7 @@ class BotkeyBoard:
     @staticmethod
     def bot_management():
         keyboard = InlineKeyboardMarkup()
-        bot_management_buttons = [[('مدیریت  جوین اجباری ' , 'manage_force_channel_join') , ('مدیریت شماره کارت ها ' , 'manage_bank_cards')]]
+        bot_management_buttons = [[('مدیریت  جوین اجباری ' , 'manage_force_channel_join') , ('💸 مدیریت نحوه پرداخت' , 'manage_bank_cards')]]
 
         row_buttons = []
 
@@ -61,6 +61,8 @@ class BotkeyBoard:
                 buttons = InlineKeyboardButton(text=text , callback_data=data)
                 row_buttons.append(buttons)
             keyboard.add(*row_buttons)
+        back_button = InlineKeyboardButton('بازگشت ',callback_data='back_to_management_menu')
+        keyboard.add(back_button)   
         return keyboard
 
 
@@ -678,12 +680,29 @@ class BotkeyBoard:
         data_card = 'pay_with_card' if tamdid is False else 'tamdid_pay_with_card'
         back_data = 'back_from_payment' if tamdid is False else 'back_from_payment_tamdid'
 
-        pay_options = [('👝 پرداخت با کیف پول' , data_wallet) , ('💳پرداخت کارت به کارت' , data_card) , ('✤ - بازگشت به منوی قبلی - ✤' , back_data)]
-        
-        for text , data in pay_options :     
+        pay_options = []
+
+        for i in botsettings.objects.all():
+
+            if i.wallet_pay ==1 and i.kartbkart_pay ==1 :
+                pay_options.append(('👝 پرداخت با کیف پول' , data_wallet))
+                pay_options.append(('💳پرداخت کارت به کارت' , data_card))
+
+            elif i.wallet_pay ==1 :
+                pay_options.append(('👝 پرداخت با کیف پول' , data_wallet))    
+
+            elif i.kartbkart_pay ==1 :
+                pay_options.append(('💳پرداخت کارت به کارت' , data_card))
+            
+
+
+        for text , data in pay_options :
             buttons = InlineKeyboardButton(text = text , callback_data = data)
             keyboard.add(buttons , row_width = 1)
         
+        back_button = InlineKeyboardButton('✤ - بازگشت به منوی قبلی - ✤', callback_data=back_data)
+        keyboard.add(back_button)
+
         return keyboard
     
 
@@ -834,6 +853,12 @@ class BotkeyBoard:
         return keyboard  
     
 
+
+
+
+
+
+
 # ------------------------- tamdidi_service ----------------------------------------------------------------------------------------
     @staticmethod
     def show_user_subsctription(user_id):
@@ -850,9 +875,20 @@ class BotkeyBoard:
         keyboard.add(back_button)
         return keyboard
     
+
+
+
+
+
+
+
+
+
 # ------------------------- admin-section ----------------------------------------------------------------------------------------
 
 
+
+#//TODO improve this section
     @staticmethod 
     def show_admins(who = None , num_toshow_items:int=2 , page_items:int=1):
 
@@ -913,11 +949,14 @@ class BotkeyBoard:
                items_button.insert(indx , admins_.first())
         
         buttons_bottom_list = []
-
+        
         if len(items_button) ==1:
-            buttons_bottom_list = [[(f'{items_button[0].admin_name}-{items_button[0].user_id}' , f'load_{items_button[0].user_id}')],
-                                    [('◀️ قبلی ' , f'Abefore_{page_items - 1}')]]
-   
+            if page_items == 1 :
+                buttons_bottom_list = [[(f'{items_button[0].admin_name}-{items_button[0].user_id}' , f'load_{items_button[0].user_id}')],]
+            elif page_items > 1:
+                    buttons_bottom_list = [[(f'{items_button[0].admin_name}-{items_button[0].user_id}' , f'load_{items_button[0].user_id}')],
+                                        [('◀️ قبلی ' , f'Abefore_{page_items - 1}')]]
+
         elif len(items_button) ==2:
             if page_items == 1 and len(admin_list) >= 4:
                 buttons_bottom_list = [[(f'{items_button[0].admin_name}-{items_button[0].user_id}' , f'load_{items_button[0].user_id}') , (f'{items_button[1].admin_name}_{items_button[1].user_id}' , f'load_{items_button[1].user_id}')],
@@ -953,3 +992,98 @@ class BotkeyBoard:
         keyboard.add(admin_add , back_admin_buttons ,  row_width=1)
 
         return keyboard 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ------------------------- karts-section ----------------------------------------------------------------------------------------
+
+
+    @staticmethod 
+    def manage_howtopay():
+        status_txt = lambda botstatus : '❌غیر فعال' if botstatus == 0 else  '✅فعال'
+        keyboard = InlineKeyboardMarkup()
+
+        botsettings_ = botsettings.objects.all()
+        for i in botsettings_:
+            raw_buttons = [
+                        [(status_txt(i.wallet_pay), 'walletpay_status') , ('پرداخت با کیف پول ','walletpay_status')],
+                        [(status_txt(i.kartbkart_pay) , 'kartbkart_status'), ('پرداخت با کارت به کارت' , 'kartbkart_status')]]
+
+        buttons = []
+        for i in raw_buttons:
+            for text , data in i:
+                button = InlineKeyboardButton(text=text , callback_data=data)
+                buttons.append(button)
+        keyboard.add(*buttons , row_width=2)
+
+        button_manage_shomare_kart = InlineKeyboardButton('مدیریت شماره کارت ها ' , callback_data='manage_shomare_kart')
+        back_button = InlineKeyboardButton('بازگشت' , callback_data='back_from_mange_howtopay')
+        keyboard.add(button_manage_shomare_kart , back_button , row_width=1)
+
+
+        return keyboard    
+    
+
+    
+    @staticmethod
+    def manage_shomarekart():
+        keyboard = InlineKeyboardMarkup()
+        shomarekart_ = shomarekart.objects.all()
+        
+        raw_top_buttons = [[('مدیریت کارت' ,'mangene') , ('شماره کارت','kart_number') , ('نام بانک' , 'bank_name')]]
+
+        top_buttons =[]
+        for i in raw_top_buttons:
+            for text , data in i:
+                button = InlineKeyboardButton(text=text , callback_data=data )
+                top_buttons.append(button)
+        keyboard.add(*top_buttons , row_width=3)
+
+
+        raw_bottom_buttons = []
+        for i in shomarekart_:
+            button = [('⚙️' , f'mkart_{str(i.bank_card)}') , (f'{str(i.bank_card)}' , f'mkart_{str(i.bank_card)}') , (f'{str(i.bank_name)}' , f'mkart_{str(i.bank_card)}')]
+            raw_bottom_buttons.append(button)
+        
+
+        
+        for i in raw_bottom_buttons:
+            bottom_buttons = []
+            for text , data in i:
+                button = InlineKeyboardButton(text=text , callback_data=data)
+                bottom_buttons.append(button)
+
+            keyboard.add(*bottom_buttons, row_width=3)
+        
+
+        add_shomare_kart = InlineKeyboardButton('اضافه کردن شماره کارت جدید' , callback_data='add_new_kart_number')
+        back_button = InlineKeyboardButton('بازگشت' , callback_data='back_from_manage_shomare_karts')
+        keyboard.add(add_shomare_kart, back_button , row_width=1)
+
+
+        return keyboard
+
+
+    @staticmethod 
+    def manage_kart(kart_number):
+        shomarekart_ = shomarekart.objects.get(bank_card= int(kart_number))
+        status = 'فعال کردن' if shomarekart_.bank_status == 0 else 'غیر فعال کردن'
+
+        keyboard = InlineKeyboardMarkup()
+        button = InlineKeyboardButton('حذف شماره کارت' , callback_data= f'rmkart_{str(kart_number)}')
+        button2 = InlineKeyboardButton(status , callback_data=f'chstatus_shomarekart_{str(kart_number)}')
+        button3 = InlineKeyboardButton('استفاده در پرداخت ها' , callback_data=f'userin_pays_{str(kart_number)}')
+        back_button = InlineKeyboardButton('بازگشت' , callback_data='back_from_manage_shomare_kart')
+        keyboard.add(button ,button2 ,button3, back_button , row_width=1)
+        return keyboard

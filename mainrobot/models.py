@@ -13,17 +13,10 @@ class users(models.Model):
     user_wallet = models.DecimalField(max_digits=18, decimal_places=2)
 
     class Meta:
-        db_table = 'TeleBot_users'
+        db_table = 'tb_users'
 
 
 
-class channels(models.Model):
-    channel_name = models.CharField(max_length=56)
-    channel_url = models.CharField(max_length=256 , blank=True , null=True)
-    channel_id = models.BigIntegerField(blank=True , null=True)
-
-    class Meta:    
-        db_table = 'TeleBot_channels'
 
 
 class admins(models.Model):
@@ -37,7 +30,7 @@ class admins(models.Model):
         return f'User {self.user_id}: Admin={self.is_admin}, Owner={self.is_owner}'
 
     class Meta:
-        db_table = 'TeleBot_admins'
+        db_table = 'tb_admins'
 
 
 
@@ -62,7 +55,7 @@ class v2panel(models.Model):
     
 
     class Meta:
-        db_table = 'TeleBot_v2panel'
+        db_table = 'tb_v2panel'
 
 
 
@@ -79,7 +72,7 @@ class products(models.Model):
     sort_id = models.SmallIntegerField(null=True , blank=True)
     inbounds_selected = models.JSONField(default=None , blank=True , null= True)
     class Meta :
-        db_table = 'TeleBot_products'
+        db_table = 'tb_products'
 
 
 
@@ -109,7 +102,7 @@ class inovices(models.Model):
     config_name = models.CharField(max_length= 56 , blank= True , null= True)
     kind_pay = models.CharField(max_length=12 , blank=True , null=True)
     class Meta:
-        db_table = 'TeleBot_inovices'
+        db_table = 'tb_inovices'
 
     
 
@@ -123,27 +116,46 @@ class payments(models.Model):
     payment_time = models.DateTimeField(auto_now_add=True)
 
     class Meta :
-        db_table = 'TeleBot_payments'
+        db_table = 'tb_payments'
 
 
-
-class payment_setting(models.Model):
-    bank_name = models.CharField(max_length=56 , null=True , blank= True)
-    bank_ownername = models.CharField(max_length=124 , null= True , blank=True)
-    bank_card = models.BigIntegerField(null=True , blank=True)
-    bank_status = models.SmallIntegerField(default= 1 , null=False)
-
-    class Meta:
-        db_table = 'TeleBot_paymentsetting'
 
 
 
 class subscriptions(models.Model):
     user_id = models.ForeignKey(to=users , to_field='user_id' , on_delete=models.DO_NOTHING)
     user_subscription = models.CharField(max_length=56)
-    product_id = models.ForeignKey(to=products  , on_delete=models.DO_NOTHING)
-    panel_id = models.ForeignKey(to=v2panel , on_delete= models.DO_NOTHING)
+    product_id = models.ForeignKey(to=products, blank=True, null=True, on_delete=models.DO_NOTHING)
+    panel_id = models.ForeignKey(to=v2panel , blank=True, null=True, on_delete= models.DO_NOTHING)
     date_created= models.DateTimeField(auto_now_add=True)
     
     class Meta:
-        db_table = 'TeleBot_subscriptions'
+        db_table = 'tb_subscriptions'
+
+
+class shomarekart(models.Model):
+    bank_name = models.CharField(max_length=56 , null=True , blank= True)
+    ownername = models.CharField(max_length=124 , null= True , blank=True)
+    bank_card = models.BigIntegerField(null=True , blank=True)
+    bank_status = models.SmallIntegerField(default= 1 , null=False)
+    bank_inmsg = models.SmallIntegerField(default=0 , null=False)
+    class Meta:
+        db_table = 'tb_shomarekart'
+
+
+
+class botsettings(models.Model):
+    wallet_pay = models.SmallIntegerField(default=0 , null=False)
+    kartbkart_pay = models.SmallIntegerField(default= 0 , null=False)
+    forcechjoin = models.SmallIntegerField(default=0 , null=False)
+    class Meta:
+        db_table = 'tb_botsettings'
+
+
+class channels(models.Model):
+    channel_name = models.CharField(max_length=56)
+    channel_url = models.CharField(max_length=256 , blank=True , null=True)
+    channel_id = models.BigIntegerField(blank=True , null=True)
+    ch_status = models.SmallIntegerField(default=0 , null=False)
+    class Meta:    
+        db_table = 'tb_channels'

@@ -78,7 +78,7 @@ WSGI_APPLICATION = 'TeleBot.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'TelebotV2pro',
+        'NAME': 'v2bot',
         'USER' : 'root',
         'HOST' : 'localhost',
         'PORT' : '3306',

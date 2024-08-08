@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from mainrobot.models import admins
+from mainrobot.models import admins , botsettings
 import getpass , os , time , main 
 
 
@@ -26,12 +26,10 @@ class Command(BaseCommand):
                 owner = 1 
                 
             admins.objects.create(user_id = get_user_id , is_admin = owner , is_owner = owner , password=get_user_passwd , admin_name ='Owner')
+            botsettings.objects.create(wallet_pay = 0 , kartbkart=0, forcechjoin=0)
             self.stdout.write(self.style.SUCCESS('Successfully !! Owner bot added to db'))
-
+            write_token(get_token_bot)
    
-            with open('BOTTOKEN.py' , 'w+') as f:
-                f.write(f'TOKEN=["{get_token_bot}"]')
-                f.close()
 
 
 
@@ -42,10 +40,12 @@ class Command(BaseCommand):
             main.bot.send_message(get_user_id, 'بات شما با موفقیت نصب شد ✅ \n برای شروع دستور : /start را بفرستید')
             self.stdout.write('bot is running' , self.style.HTTP_SUCCESS )
             main.bot.infinity_polling()
+            #main.bot.polling(non_stop=True)
+
 
         else :
-
             clear_console()  
+            
             i = 3
             while True:
                 if i > 0 :
@@ -59,9 +59,17 @@ class Command(BaseCommand):
             clear_console()
 
             self.stdout.write('--! Bot is Running !--' , self.style.HTTP_SUCCESS ,)   
-            main.bot.infinity_polling
+            main.bot.infinity_polling()
+            #main.bot.polling(non_stop=True)
 
-                
+
+
+
+#/ write token
+def write_token(token):
+    with open('bottoken.py' , 'w+') as f:
+            f.write(f'TOKEN=["{token}"]')
+            f.close()
 
 
 #/ clear console

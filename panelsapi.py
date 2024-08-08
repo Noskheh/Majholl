@@ -120,7 +120,7 @@ class marzban:
         if get_user_request.status_code == 200 :
             return json.loads(get_user_request.content)
         else :
-            return f'{username} not found'
+            return False
        
        
     def remove_user(self , username):
@@ -142,3 +142,25 @@ class marzban:
             return json.loads(revoke_sub.content)
         else :
             return f'revoke {username} subscription failed'
+        
+
+    def get_user_bytoken_sub(self , Token):
+        panel_url = self.panel_url + f'/sub/{Token}/'
+        get_header = marzban.get_token_acces(self)
+        get_user_by_token_sub = requests.get(panel_url , headers=get_header)
+        
+        if get_user_by_token_sub.status_code == 200:
+            return True
+        
+        return False
+    
+
+
+    def get_info_by_token(self , Token):
+        panel_url = self.panel_url + f'/sub/{Token}/info'
+        get_header = marzban.get_token_acces(self)
+        info_by_token = requests.get(panel_url , headers=get_header)
+        if info_by_token.status_code == 200:
+            return json.loads(info_by_token.content)
+        else :
+            return False

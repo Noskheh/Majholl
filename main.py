@@ -1,7 +1,7 @@
 #all modules imported in here
-import telebot , re , json , BOTTOKEN , panelsapi 
+import telebot , re , json , bottoken , panelsapi 
 from telebot.types import InlineKeyboardMarkup , InlineKeyboardButton 
-from mainrobot.models import users , admins , v2panel , products , inovices , payments , subscriptions
+from mainrobot.models import users , admins , v2panel , products , inovices , payments , subscriptions , shomarekart ,botsettings
 from keybuttons import BotkeyBoard as BotKb
 from functions.USERS_onstarts import *
 from functions.PANEL_managing import *
@@ -15,7 +15,7 @@ import jdatetime , datetime
 
 
 
-bot = telebot.TeleBot(token=BOTTOKEN.TOKEN[0], parse_mode="HTML", colorful_logs=True)
+bot = telebot.TeleBot(token=bottoken.TOKEN[0], parse_mode="HTML", colorful_logs=True)
 
 #(//TODO add /add_panel to the text if theres no plan for first time
 #//TODO back from service status not working
@@ -484,8 +484,13 @@ def get_decline_reason(message):
 # ---------------------------- service_status ----------------------------------------------------------------------------------------
 
 marzban_panel_api_user = {}
+RM_MYSUB = {}
+USER_QUERY_SERVICE = {}
 
-@bot.callback_query_handler(func= lambda call: call.data in ['service_status' ,  'get_config_link' , 'get_qrcode_link' , 'back_from_service_status' , 'back_from_user_service_status', 'get_removing_account']  or call.data.startswith(('serviceshow.' , 'get_new_link')))
+
+
+
+@bot.callback_query_handler(func= lambda call: call.data in ['service_status' ,  'get_config_link' , 'get_qrcode_link' , 'back_from_service_status' , 'back_from_user_service_status', 'get_removing_account', 'service_not_inlist']  or call.data.startswith(('serviceshow.' , 'get_new_link')))
 def show_services(call):
     Text_0 = 'برای نمایش وضعیت سرویس بر روی آن کلیک کنید'
     if call.data=='service_status':
@@ -498,8 +503,7 @@ def show_services(call):
         user_config_name =  call_data[-1].removeprefix("(").removesuffix(")")
         subscriptions_ = subscriptions.objects.get(user_subscription = user_config_name )
         request = panelsapi.marzban(int(subscriptions_.panel_id.pk)).get_user(user_config_name)
-
-        expire_date = jdatetime.datetime.fromtimestamp(request['expire'])
+        expire_date = jdatetime.datetime.fromtimestamp(request["expire"])
 
         created_at_raw = request['created_at'] if request['created_at'] is not None else 'empty'
         if created_at_raw != 'empty':
@@ -511,17 +515,19 @@ def show_services(call):
 
 ── نام اشتراک :‌ {subscriptions_.user_subscription}
 ──جزییات بسته 
-  ──  💬نام بسته :‌ {subscriptions_.product_id.product_name}
-  ──  📅مدت زمان : {subscriptions_.product_id.expire_date} روز 
-  ──  🔋حجم بسته‌‌ : {subscriptions_.product_id.data_limit} گیگ 
-  ──  💰قیمت محصول : {subscriptions_.product_id.pro_cost} تومان
+  ──  💬نام بسته :‌ {subscriptions_.product_id.product_name if subscriptions_.product_id is not None else '⚠️اطلاعاتی موجود نیست ⚠️'}
+  ──  📅مدت زمان : {subscriptions_.product_id.expire_date if subscriptions_.product_id is not None else '⚠️اطلاعاتی موجود نیست ⚠️' } روز 
+  ──  💰قیمت محصول : {subscriptions_.product_id.pro_cost if subscriptions_.product_id is not None else '⚠️اطلاعاتی موجود نیست ⚠️'} تومان
 
 ──تاریخ انقضا :
     {str(expire_date)}
 ── تاریخ ساخت اکانت : 
     {str(created_at)}
+
+برای حذف کردن اشتراک از لیست خود :  /rm_mysub_{subscriptions_.pk}
 .
-"""
+""" 
+        RM_MYSUB[call.from_user.id] = {'user_sub': subscriptions_.pk , 'rm_sub' : True }
         marzban_panel_api_user[call.from_user.id]=request
         bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.user_service_status(call_data[1] , request))
 
@@ -594,18 +600,131 @@ def show_services(call):
 
 
 
+    if call.data =='service_not_inlist':
+        Text_5=f"""
+🚦برای اضافه کردن اشتراک خود در ربات یا دسترسی به اشتراک خود به دو طریق میتوانید عمل کنید
+
+  ── 1️⃣ ارسال لینک هوشمند اشتراک 
+    - در این روش دقت کنید که لینک کانفیگ را ارسال نکنید و تنها لینک هوشمندی که ابتدای آن دارای (https / http) هست را ارسال کنید
+
+  ── 2️⃣ ارسال نام دقیق اشتراک 
+    - در این روش نام اشتراک خود را ارسال نمایید . این نام همان نامی است که در هنگام خرید اشتراک وارد نمودید 
+
+TO CANCEL : /cancel
+.
+"""
+        USER_QUERY_SERVICE[call.from_user.id] = {'query':True}
+        bot.edit_message_text(Text_5, call.message.chat.id , call.message.message_id)
+
+
+
     if call.data =='back_from_service_status':
         bot.edit_message_text(welcome_msg , call.message.chat.id , call.message.message_id , reply_markup=BotKb.main_menu_in_user_side(call.from_user.id))
 
     if call.data =='back_from_user_service_status':
         clear_dict(marzban_panel_api_user , call.from_user.id)
+        clear_dict(RM_MYSUB , call.from_user.id)
         bot.edit_message_text(Text_0 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.show_service_status(call.from_user.id))
 
 
 
 
 
+@bot.message_handler(func=lambda message: (len(RM_MYSUB) >= 1 and message.from_user.id in RM_MYSUB and RM_MYSUB[message.from_user.id]['rm_sub'] == True))
+def rm_mysub(message):
+    if message.from_user.id in RM_MYSUB and RM_MYSUB[message.from_user.id]['rm_sub']==True:
+        if message.text.startswith('/rm_mysub_'):
+            sub_id = message.text.split('_')
+            try :
+                
+                subscription_ = subscriptions.objects.get(id = sub_id[-1])
+                if subscription_.user_id == message.from_user.id :
+                    subscription_.delete()
+                Text_0 = f'برای نمایش وضعیت سرویس بر روی آن کلیک کنید \n'
+                bot.send_message(message.chat.id , Text_0 , reply_markup=BotKb.show_service_status(message.from_user.id))
+                clear_dict(RM_MYSUB , message.from_user.id)
+                clear_dict(marzban_panel_api_user , message.from_user.id)
+            except Exception as error_mysub:
+                print(f'Error when removing user sub; {error_mysub}')
+        else:
+            pass
 
+
+
+
+
+
+@bot.message_handler(func=lambda message: (len(USER_QUERY_SERVICE) >= 1 and message.from_user.id in USER_QUERY_SERVICE and USER_QUERY_SERVICE[message.from_user.id]['query'] == True))
+def query_for_user_service(message):
+    if message.from_user.id in USER_QUERY_SERVICE and USER_QUERY_SERVICE[message.from_user.id]['query'] == True:
+        if message.text == '/cancel' or message.text =='/cancel'.upper():
+            clear_dict(USER_QUERY_SERVICE , message.from_user.id)
+            Text_cancel = f'برای نمایش وضعیت سرویس بر روی آن کلیک کنید \n'
+            bot.send_message(message.chat.id , Text_cancel, reply_markup=BotKb.show_service_status(message.from_user.id))
+        else:
+            msg = message.text
+            patt = r'^https?:\/\/[\d\w\.\-\_\/]+'
+            if re.search(patt, msg) is not None:
+                try:
+                    sub_token = msg.split('/')[-1]
+                    panels_ = [i.id for i in v2panel.objects.all()]
+                    for i in panels_:
+                        try:
+                            req = panelsapi.marzban(panel_id=int(i)).get_info_by_token(sub_token)
+                            if req:
+                                username = req["username"]
+                                try:
+                                    subscription_user = subscriptions.objects.get(user_subscription=str(username))
+                                    if subscription_user.user_id != message.from_user.id:
+                                        bot.send_message(message.chat.id, '⚠️این اشتراک متلعق به شما نیست⚠️')
+                                    else :
+                                        bot.send_message(message.chat.id , '⚠️این اشتراک در لیست اشتراکهای شما قرار دارد⚠️')  
+
+                                except subscriptions.DoesNotExist:
+                                    panel_id = v2panel.objects.get(id=int(i))
+                                    user_ = users.objects.get(user_id=message.from_user.id)
+                                    subscription_ = subscriptions.objects.create(user_subscription=username, panel_id=panel_id, user_id=user_)
+                                    Text_0 = f'برای نمایش وضعیت سرویس بر روی آن کلیک کنید \n ✅اشتراک شما بانام {username} با موفقیت اضافه شد'
+                                    bot.send_message(message.chat.id, Text_0, reply_markup=BotKb.show_service_status(message.from_user.id))
+
+                                break
+                            else:
+                                bot.send_message(message.chat.id, 'اشتراکی با این توکن وجود ندارد')
+                                
+                        except Exception as api_error:
+                            print(f"API error for panel {i}: {api_error}") 
+                                
+                except Exception as eror_by_token:  
+                    bot.send_message(message.chat.id, 'همچین لینکی در سیستم وجود ندارد')
+                clear_dict(USER_QUERY_SERVICE , message.from_user.id)
+
+            else:
+                try:
+                    panels_ = [i.id for i in v2panel.objects.all()]
+                    for i in panels_:
+                        req = panelsapi.marzban(panel_id=int(i)).get_user(username=str(message.text))
+                        if req:
+                            username = req['username']
+                            try:
+                                subscription_find = subscriptions.objects.get(user_subscription=str(username))
+                                if subscription_find.user_id != message.from_user.id:
+                                    bot.send_message(message.chat.id, '⚠️این اشتراک متلعق به شما نیست⚠️')
+                                else:
+                                    bot.send_message(message.chat.id, '⚠️این اشتراک در لیست اشتراک‌های شما قرار دارد⚠️')
+                            except subscriptions.DoesNotExist:
+                                panel_id = v2panel.objects.get(id=int(i))
+                                user_ = users.objects.get(user_id=message.from_user.id)
+                                subscription_ = subscriptions.objects.create(user_subscription=username, panel_id=panel_id, user_id=user_)
+                                Text_0 = f'برای نمایش وضعیت سرویس بر روی آن کلیک کنید \n ✅اشتراک شما با نام {username} با موفقیت اضافه شد'
+                                bot.send_message(message.chat.id, Text_0, reply_markup=BotKb.show_service_status(message.from_user.id))
+                                clear_dict(USER_QUERY_SERVICE, message.from_user.id)
+                            break
+                    else:
+                        bot.send_message(message.chat.id, 'همچین نامی وجود ندارد')
+                    clear_dict(USER_QUERY_SERVICE, message.from_user.id)
+                except Exception as eror_by_token:
+                    bot.send_message(message.chat.id, 'همچین نامی در سیستم وجود ندارد')
+                    clear_dict(USER_QUERY_SERVICE, message.from_user.id)
 
 
 
@@ -1904,17 +2023,192 @@ def bot_statics(call):
 #---------------------------------------------------------------------------------------------------------------------------------#
 # -------------------------bot_management------------------------------------------------------------------------------------#
 # --------------------------------------------------------------------------------------------------------------------------------#
-@bot.callback_query_handler(func= lambda call: call.data=='bot_managment')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ADD_BANK_KARD = {'bank_name_stat' : False , 'bank_name' : str ,
+                'bank_kart_stat': False , 'bank_kart' : str ,
+                'bank_ownername_stat' : False , 'bank_ownername': str}
+
+
+@bot.callback_query_handler(func= lambda call: call.data in ['bot_managment', 'manage_bank_cards' ,'walletpay_status', 'kartbkart_status','manage_shomare_kart', 'back_to_management_menu', 'back_from_mange_howtopay', 'back_from_manage_shomare_kart', 'back_from_manage_shomare_karts' , 'add_new_kart_number'] or call.data.startswith(('mkart_' , 'rmkart_', 'chstatus_shomarekart_' , 'userin_pays_')))
 def bot_managment(call):
-    bot.edit_message_text('به قسمت تنظیمات ربات خوش امدید ' , call.message.chat.id , call.message.message_id , reply_markup=BotKb.bot_management())
+    status_txt = lambda botstatus : '❌غیر فعال' if botstatus == 0 else  '✅فعال'
+
+
+    if call.data == 'bot_managment':
+        bot.edit_message_text('به قسمت تنظیمات ربات خوش امدید ' , call.message.chat.id , call.message.message_id , reply_markup=BotKb.bot_management())
+
+    if call.data =='manage_bank_cards':
+        Text_2 = 'برای مدیریت کردن نحوه پرداخت از گزینه های زیر استفاده نمایید'
+        bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id, reply_markup=BotKb.manage_howtopay())
+
+
+
+    if call.data =='back_to_management_menu':
+        bot.edit_message_text('به مدیریت ربات خوش امدید', call.message.chat.id , call.message.message_id , reply_markup= BotKb.management_menu_in_admin_side())        
+
+    if call.data =='back_from_mange_howtopay':
+        bot.edit_message_text('به قسمت تنظیمات ربات خوش امدید' , call.message.chat.id , call.message.message_id , reply_markup=BotKb.bot_management())
+    
+
+
+
+    if call.data =='walletpay_status':
+        botsettings_ = botsettings.objects.all()
+        for i in botsettings_:
+            new_wallet_pay = 1 if i.wallet_pay == 0 else 0
+            i.wallet_pay = new_wallet_pay
+            i.save()
+        Text_3 = f'برای مدیریت کردن نحوه پرداخت از گزینه های زیر استفاده نمایید \n وضعیت پرداخت با کیف پول تغییر کرد \n وضعیت فعلی : {status_txt(i.wallet_pay)}'
+        bot.edit_message_text(Text_3, call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_howtopay())
+
+
+    if call.data =='kartbkart_status':
+        botsettings_ = botsettings.objects.all()
+        for i in botsettings_:
+            new_kartbkart_pay = 1 if i.kartbkart_pay == 0 else 0
+            i.kartbkart_pay = new_kartbkart_pay
+            i.save()
+        Text_3 = f'برای مدیریت کردن نحوه پرداخت از گزینه های زیر استفاده نمایید \n وضعیت پرداخت با کارت به کارت تغییر کرد \n وضعیت فعلی : {status_txt(i.kartbkart_pay)}'
+        bot.edit_message_text(Text_3, call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_howtopay())
+
+
+
+    if call.data =='manage_shomare_kart':
+        Text_4='به قسمت مدیریت کردن شماره کارت ها خوش امدید'
+        bot.edit_message_text(Text_4 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_shomarekart())
+
+
+
+
+    if call.data.startswith('mkart_'):
+        call_data = call.data.split('_')
+        shomarekart_ = shomarekart.objects.get(bank_card= call_data[-1])
+        use_status = 'عدم استفاده' if shomarekart_.bank_inmsg == 0 else 'در حال استفاده'
+        Text_5 = f"""
+وضعیت کارت :‌ {status_txt(shomarekart_.bank_status)}
+نام صاحب کارت : {shomarekart_.ownername}
+شماره کارت : {shomarekart_.bank_card}
+نام بانک کارت : {shomarekart_.bank_name}
+وضعیت استفاده : {use_status}
+"""
+        bot.edit_message_text(Text_5 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_kart(call_data[-1]))
+
+
+
+
+
+    if call.data.startswith('userin_pays_'):
+        call_data = call.data.split('_')
+        shomarekart_bank_inuse_false = shomarekart.objects.filter(bank_inmsg =1).all()
+        for i in shomarekart_bank_inuse_false:
+            i.bank_inmsg = 0
+            i.save()
+        shomarekart_ = shomarekart.objects.get(bank_card= call_data[-1])
+        new_use_status = 1 if shomarekart_.bank_inmsg ==0 else 0
+        shomarekart_.bank_inmsg = new_use_status
+        shomarekart_.save()
+
+        use_status = 'عدم استفاده' if shomarekart_.bank_inmsg == 0 else 'در حال استفاده'
+        Text_5 = f"""
+وضعیت کارت :‌ {status_txt(shomarekart_.bank_status)}
+نام صاحب کارت : {shomarekart_.ownername}
+شماره کارت : {shomarekart_.bank_card}
+نام بانک کارت : {shomarekart_.bank_name}
+وضعیت استفاده : {use_status}
+"""
+        bot.edit_message_text(Text_5 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_kart(call_data[-1]))
 
 
 
 
 
 
+    if call.data.startswith('rmkart_'):
+        call_data = call.data.split('_')
+        shomarekart_ = shomarekart.objects.get(bank_card= call_data[-1]).delete()
+        Text_5='به قسمت مدیریت کردن شماره کارت ها خوش امدید'
+        bot.edit_message_text(Text_5 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_shomarekart())
 
 
+
+
+    if call.data.startswith('chstatus_shomarekart_'):
+        call_data = call.data.split("_")
+        shomarekart_ = shomarekart.objects.get(bank_card= call_data[-1])
+        new_shomarekart_status = 1 if shomarekart_.bank_status == 0 else 0
+        shomarekart_.bank_status = new_shomarekart_status
+        shomarekart_.save()
+        use_status = 'عدم استفاده' if shomarekart_.bank_inmsg == 0 else 'در حال استفاده'
+        Text_6 = f"""
+وضعیت کارت :‌ {status_txt(shomarekart_.bank_status)}
+نام صاحب کارت : {shomarekart_.ownername}
+شماره کارت : {shomarekart_.bank_card}
+نام بانک کارت : {shomarekart_.bank_name}
+وضعیت استفاده : {use_status}
+"""
+        bot.edit_message_text(Text_6 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_kart(call_data[-1]))
+
+
+
+
+    if call.data == 'back_from_manage_shomare_kart':
+        Text_back_1='به قسمت مدیریت کردن شماره کارت ها خوش امدید'
+        bot.edit_message_text(Text_back_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_shomarekart())
+
+
+    if call.data =='back_from_manage_shomare_karts':
+        Text_back_2= 'برای مدیریت کردن نحوه پرداخت از گزینه های زیر استفاده نمایید'
+        bot.edit_message_text(Text_back_2 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_howtopay())
+
+
+
+    if call.data =='add_new_kart_number':
+        ADD_BANK_KARD['bank_name_stat'] = True
+        bot.send_message(call.message.chat.id, 'نام بانک را ارسال نمایید')
+        
+
+
+
+
+@bot.message_handler(func= lambda message : ADD_BANK_KARD['bank_name_stat']== True or ADD_BANK_KARD['bank_kart_stat']==True or ADD_BANK_KARD['bank_ownername_stat']==True)
+def handle_newbank_kard(message):
+    if ADD_BANK_KARD['bank_name_stat']== True:
+        ADD_BANK_KARD['bank_name'] = message.text
+        ADD_BANK_KARD['bank_name_stat'] = False
+        ADD_BANK_KARD['bank_kart_stat']=True
+        bot.send_message(message.chat.id , 'شماره کارت بانک را ارسال نمایید')
+        return
+
+
+    if ADD_BANK_KARD['bank_kart_stat']== True:
+        ADD_BANK_KARD['bank_kart'] = message.text
+        ADD_BANK_KARD['bank_kart_stat'] = False
+        ADD_BANK_KARD['bank_ownername_stat']= True
+        bot.send_message(message.chat.id , 'نام دارنده حساب را ارسال نمایید')
+        return
+
+
+
+    if ADD_BANK_KARD['bank_ownername_stat']== True:
+        ADD_BANK_KARD['bank_ownername'] = message.text
+        ADD_BANK_KARD['bank_ownername_stat'] = False
+        shomarekart.objects.create(bank_name=ADD_BANK_KARD['bank_name'], bank_card=ADD_BANK_KARD['bank_kart'] , ownername=ADD_BANK_KARD['bank_ownername'] , bank_status=0 , bank_inmsg=0)
+        bot.send_message(message.chat.id , 'شماره کارت با موفقیت اضافه شد' , reply_markup=BotKb.manage_shomarekart())
+        return
 
 
 

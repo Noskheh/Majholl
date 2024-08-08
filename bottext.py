@@ -1,4 +1,4 @@
-from mainrobot.models import v2panel , products , payment_setting
+from mainrobot.models import v2panel , products , shomarekart
 
 #-all editable messages 
 
@@ -81,14 +81,13 @@ def buy_service_section_product_send(link_kind , link=None , image_only=None):
 
 
 def buy_service_section_card_to_card_msg(cost): 
-    payment_setting_ = payment_setting.objects.all()
-    for i in payment_setting_:
-        bank_kard = i.bank_card
-        bank_owner = i.bank_ownername
-        bank_name = i.bank_name
+    shomarekart_ = shomarekart.objects.get(bank_inmsg=1)
+    bank_kard = shomarekart_.bank_card
+    bank_owner = shomarekart_.ownername
+    bank_name = shomarekart_.bank_name
 
-        kard = [str(bank_kard)[i : i+4] for i in range(0 , len(str(bank_kard)) , 4)]
-        buy_service_section_card_to_card_msg = f"""
+    kard = [str(bank_kard)[i : i+4] for i in range(0 , len(str(bank_kard)) , 4)]
+    buy_service_section_card_to_card_msg = f"""
 ╮ برای  تکمیل خرید خود و دریافت لینک اشتراک خود  ╭
 
     ┤ 💸مبلغ : {format(cost , ',')}
