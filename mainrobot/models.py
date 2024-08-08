@@ -13,7 +13,7 @@ class users(models.Model):
     user_wallet = models.DecimalField(max_digits=18, decimal_places=2)
 
     class Meta:
-        db_table = 'tb_users'
+        db_table = 'v2_users'
 
 
 
@@ -30,7 +30,7 @@ class admins(models.Model):
         return f'User {self.user_id}: Admin={self.is_admin}, Owner={self.is_owner}'
 
     class Meta:
-        db_table = 'tb_admins'
+        db_table = 'v2_admins'
 
 
 
@@ -55,7 +55,7 @@ class v2panel(models.Model):
     
 
     class Meta:
-        db_table = 'tb_v2panel'
+        db_table = 'v2_v2panel'
 
 
 
@@ -72,7 +72,7 @@ class products(models.Model):
     sort_id = models.SmallIntegerField(null=True , blank=True)
     inbounds_selected = models.JSONField(default=None , blank=True , null= True)
     class Meta :
-        db_table = 'tb_products'
+        db_table = 'v2_products'
 
 
 
@@ -102,7 +102,7 @@ class inovices(models.Model):
     config_name = models.CharField(max_length= 56 , blank= True , null= True)
     kind_pay = models.CharField(max_length=12 , blank=True , null=True)
     class Meta:
-        db_table = 'tb_inovices'
+        db_table = 'v2_inovices'
 
     
 
@@ -116,7 +116,7 @@ class payments(models.Model):
     payment_time = models.DateTimeField(auto_now_add=True)
 
     class Meta :
-        db_table = 'tb_payments'
+        db_table = 'v2_payments'
 
 
 
@@ -130,7 +130,7 @@ class subscriptions(models.Model):
     date_created= models.DateTimeField(auto_now_add=True)
     
     class Meta:
-        db_table = 'tb_subscriptions'
+        db_table = 'v2_subscriptions'
 
 
 class shomarekart(models.Model):
@@ -140,7 +140,7 @@ class shomarekart(models.Model):
     bank_status = models.SmallIntegerField(default= 1 , null=False)
     bank_inmsg = models.SmallIntegerField(default=0 , null=False)
     class Meta:
-        db_table = 'tb_shomarekart'
+        db_table = 'v2_shomarekart'
 
 
 
@@ -149,7 +149,7 @@ class botsettings(models.Model):
     kartbkart_pay = models.SmallIntegerField(default= 0 , null=False)
     forcechjoin = models.SmallIntegerField(default=0 , null=False)
     class Meta:
-        db_table = 'tb_botsettings'
+        db_table = 'v2_botsettings'
 
 
 class channels(models.Model):
@@ -158,4 +158,4 @@ class channels(models.Model):
     channel_id = models.BigIntegerField(blank=True , null=True)
     ch_status = models.SmallIntegerField(default=0 , null=False)
     class Meta:    
-        db_table = 'tb_channels'
+        db_table = 'v2_channels'
