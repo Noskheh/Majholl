@@ -6,7 +6,6 @@ import re ,  datetime , jdatetime
 
 class BotkeyBoard:
     
-
     @staticmethod
     def main_menu_in_user_side(userId : int) :
 
@@ -727,6 +726,31 @@ class BotkeyBoard:
 
 
 
+
+
+# ------------------------- tamdidi_service ----------------------------------------------------------------------------------------
+    
+    @staticmethod
+    def show_user_subsctription(user_id):
+        keyboard = InlineKeyboardMarkup()
+        user_ = users.objects.get(user_id = user_id)
+        subscriptions_ = subscriptions.objects.filter(user_id = user_)
+        if subscriptions_.count() >= 1:
+            for i in subscriptions_:
+                buttons = InlineKeyboardButton(text= i.user_subscription , callback_data= f'Tamidi:{i.user_subscription}:{i.user_id.user_id}')
+                keyboard.add(buttons)
+        else :
+            return 'no_sub_user_have'
+        back_button = InlineKeyboardButton('✤ - بازگشت به منوی قبلی - ✤' , callback_data='back_from_user_tamdid_service')
+        keyboard.add(back_button)
+        return keyboard
+    
+
+
+
+
+
+
 # ------------------------- User_service status ----------------------------------------------------------------------------------------
     @staticmethod
     def show_service_status(user_id):
@@ -809,7 +833,7 @@ class BotkeyBoard:
         keyboard = InlineKeyboardMarkup()
         
         users_ = users.objects.all().filter(user_id = user_id)
-        
+        botsettings_ = [i for i in botsettings.objects.all()]
         info_box = []     
 
         for i in users_  :
@@ -817,24 +841,31 @@ class BotkeyBoard:
             fname = i.first_name if i.first_name  else  ''
             lname = i.last_name if i.last_name else ''
             buttons = [ 
-                        [(fname + lname, f'{fname + lname}') , ('نام ' , 'fist_last_name')] ,
-                        [(i.user_id , 'user_id') , ('ایدی عددی ', 'user_id')] , 
-                        [(i.username , 'username') , ('یوزرنیم' , 'username')] , 
-                        [(format(wallet_num , ',')+ 'تومان', 'wallet') , ('کیف پول ' , 'wallet')] , 
-                        [('انتقال وجه به کاربر 💸 ' , 'tranfert_money_from_wallet')],
+                        [(fname + lname, f'{fname + lname}') , ('👤- نام ' , 'fist_last_name')] ,
+                        [(i.user_id , 'user_id') , ('ایدی عددی -🆔', 'user_id')] , 
+                        [(i.username , 'username') , ('🌀- یوزرنیم' , 'username')] , 
+                        [(format(wallet_num , ',')+ ' تومان ', 'wallet') , ('👝- کیف پول' , 'wallet')] , 
+                        # place for moneyusrtousr
                         [('شارژ کیف پول 💰' , 'charge_wallet')],
-                        [('بازگشت ↪️' , 'back_from_wallet_profile' )]
-                    ]
+                        [('✤ - بازگشت به منوی قبلی - ✤' , 'back_from_wallet_profile' )]]
+            
             info_box.append(i.user_id )
             info_box.append(i.username)
         
 
+
+        if botsettings_[0].moneyusrtousr == 1 :
+                buttons.insert(4 , [('انتقال وجه به کاربر 💸 ' , 'tranfert_money_from_wallet')])
+
+
         for i in buttons :
             buttons_list = []
             for text , data in i:
-                button = InlineKeyboardButton(text= text , callback_data=  data)    
+                button = InlineKeyboardButton(text= text , callback_data=  data)
                 buttons_list.append(button)
             keyboard.add(*buttons_list)
+
+
 
         if info == False :
             return keyboard
@@ -842,12 +873,15 @@ class BotkeyBoard:
             return info_box 
         
 
+
+
+
     @staticmethod 
-    def wallet_accepts_or_decline(user_id , pay :int = 1): # 1 = شارژ کیف پول با ارسال عکس رسید
+    def wallet_accepts_or_decline(user_id ):
         keyboard = InlineKeyboardMarkup()
 
-        rows = [InlineKeyboardButton(text ='تایید پرداخت', callback_data= f'wallet_accepts_{user_id}_{pay}'),
-                InlineKeyboardButton(text ='رد پرداخت', callback_data =f'wallet_decline_{user_id}_{pay}')]
+        rows = [InlineKeyboardButton(text ='✅ تایید پرداخت ', callback_data= f'wallet_accepts_{user_id}'),
+                InlineKeyboardButton(text ='❌ رد پرداخت ', callback_data =f'wallet_decline_{user_id}')]
         keyboard.add(*rows)
         
         return keyboard  
@@ -856,25 +890,6 @@ class BotkeyBoard:
 
 
 
-
-
-
-# ------------------------- tamdidi_service ----------------------------------------------------------------------------------------
-    @staticmethod
-    def show_user_subsctription(user_id):
-        keyboard = InlineKeyboardMarkup()
-        user_ = users.objects.get(user_id = user_id)
-        subscriptions_ = subscriptions.objects.filter(user_id = user_)
-        if subscriptions_.count() >= 1:
-            for i in subscriptions_:
-                buttons = InlineKeyboardButton(text= i.user_subscription , callback_data= f'Tamidi_{i.user_subscription}_{i.user_id.user_id}')
-                keyboard.add(buttons)
-        else :
-            return 'no_sub_user_have'
-        back_button = InlineKeyboardButton('بازگشت به منوی قبلی↪️' , callback_data='back_from_user_tamdid_service')
-        keyboard.add(back_button)
-        return keyboard
-    
 
 
 
@@ -1018,7 +1033,8 @@ class BotkeyBoard:
         for i in botsettings_:
             raw_buttons = [
                         [(status_txt(i.wallet_pay), 'walletpay_status') , ('پرداخت با کیف پول ','walletpay_status')],
-                        [(status_txt(i.kartbkart_pay) , 'kartbkart_status'), ('پرداخت با کارت به کارت' , 'kartbkart_status')]]
+                        [(status_txt(i.kartbkart_pay) , 'kartbkart_status'), ('پرداخت با کارت به کارت' , 'kartbkart_status')],
+                        [(status_txt(i.moneyusrtousr) , 'moneyusrtousr_status'), ('انتقال وجه یوزر به یوزر' , 'moneyusrtousr_status')]]
 
         buttons = []
         for i in raw_buttons:

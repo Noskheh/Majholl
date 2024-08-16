@@ -23,29 +23,36 @@ def add_panel_database(panel_name , panel_url , panel_username , panel_password 
 
 
 
+
+
+
+
+#//TODO بررسی کردن حذف پنل در صورت داشتن اشتراک فعال  
+#//TODO چطوری باید پنل حذف شود در صورتی که اشتراک فعال در مدل subscription وجود دارد؟؟؟
+
 #-Removing panel from Database
-def remove_panel_database(panel_id , BOT , call ,panel=None , product=None ):
+def remove_panel_database(panel_id , bot , call ,panel=None , product=None ):
     if product is not None:
         try :  
             panel_to_remove = v2panel.objects.get(id = panel_id).delete()
-            BOT.answer_callback_query(call.id , 'در حال حذف کردن پنل...')
+            bot.answer_callback_query(call.id , 'در حال حذف کردن پنل...')
 
         except Exception as panel_remove :
             print(f'Error !! during removing panel \n\t Error-msg : {panel_remove}')
-            BOT.send_message('مشکلی در حذف کردن پنل به وجود امد' , call.message.chat.id)
+            bot.send_message(call.message.chat.id , 'مشکلی در حذف کردن پنل به وجود امد' )
 
         time.sleep(2)
         try : 
             products_to_remove = products.objects.filter(panel_id = panel_id).delete()  
-            BOT.answer_callback_query(call.id , 'در حال حذف کردن محصولات مرتبط با پنل ....')
+            bot.answer_callback_query(call.id , 'در حال حذف کردن محصولات مرتبط با پنل ....')
 
         except Exception as products_remove:
             print(f'Error !! during removing panel\'s product \n\t Error-msg :  {products_remove}')
             
         time.sleep(2)
         Text_1='✅پنل و تمامی محصولات مرتبط با اون باموفقیت از دیتابیس پاک شدند '  
-        BOT.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.panel_management_remove_panel())
-    
+        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.panel_management_remove_panel())
+        return
 
     if panel is not None :
         try :  
@@ -55,10 +62,16 @@ def remove_panel_database(panel_id , BOT , call ,panel=None , product=None ):
                 i.panel_id = None
                 i.save()
             Text_2='✅پنل باموفقیت از دیتابیس پاک شد'  
-            BOT.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.panel_management_remove_panel())
+            bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.panel_management_remove_panel())
         except Exception as panel_remove :
             print(f'Error !! during removing panel \n\t Error-msg : {panel_remove}')
-            BOT.send_message('مشکلی در حذف کردن پنل به وجود امد' , call.message.chat.id)
+            bot.send_message(call.message.chat.id , 'مشکلی در حذف کردن پنل به وجود امد')
+        return
+
+
+
+
+
 
 
 
@@ -352,6 +365,25 @@ def change_panel_config(panel_id , BOT , call):
 
 
 
+
+
+
+def check_capcity(panel_id = int ):
+    panels_ = v2panel.objects.get(id = panel_id)
+
+    try : 
+        if panels_.capcity_mode  == 1:
+                if panels_.all_capcity > 0 :
+                    panels_.all_capcity -= 1
+                    panels_.sold_capcity += 1
+                    
+
+                    if panels_.all_capcity == 0:
+                        panels_.capcity_mode = 0
+
+                    panels_.save()
+    except Exception as error:
+        print(f'An error occurred while checking capacity: {error}')
 
 
 

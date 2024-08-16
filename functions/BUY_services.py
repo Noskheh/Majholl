@@ -2,7 +2,7 @@ from mainrobot.models import v2panel , products  , inovices ,users  , payments
 from telebot.types import InlineKeyboardButton , InlineKeyboardMarkup , InputMediaPhoto
 from tools import QRcode_maker , farsi_parser
 import decimal ,  re , panelsapi
-import functions.check_fun as check_fun
+from functions import PANEL_managing
 from bottext import *
 
 
@@ -44,6 +44,7 @@ def plans_loading_for_one_panel(tamdid:bool= False) :
                         button_back_1more = InlineKeyboardButton(text = '✤ - بازگشت به منوی قبلی - ✤' , callback_data = 'back_from_chosing_product_one_panel')
                         keyboard.add(button_back_1more) 
                         return keyboard
+                    
                     else :
                         return 'sale_open_no_zarfit'
                     
@@ -194,9 +195,9 @@ def pay_with_wallet( call , bot , product_dict , panel_loaded ):
         except Exception as error_1:
             print(f'an error eccured  when updating user wallet: \n\t {error_1}')
         
-        if panel_loaded['one_panel'] == True  or panel_loaded['two_panels']:
+        if panel_loaded['one_panel'] == True  or panel_loaded['two_panels']  == True :
             if ('open' and 'zarfit') in info['statement'] :
-                check_fun.check_capcity(panel_loaded['panel_pk'])
+                PANEL_managing.check_capcity(panel_loaded['panel_pk'])
 
         
         inovivces_ = create_inovices(user_id= user_ , user_username=call.from_user.username , panel_name = panel_.panel_name , product_name= info['product_name'],
@@ -217,26 +218,15 @@ def pay_with_wallet( call , bot , product_dict , panel_loaded ):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 #-Tamidi pay with wallet
 def tamdid_pay_with_wallet(call , bot , product_dict , panel_loaded):
     info = product_dict[call.from_user.id]
     user_ = users.objects.get(user_id = call.from_user.id)
-    panel_ = v2panel.objects.get(id = info['panel_number'])
+    panel_ = v2panel.objects.get(id = int(info['panel_number']))
     product_price = info['pro_cost']
 
     if user_.user_wallet < product_price :
-        bot.send_message(call.message.chat.id , '⚠️موجودی حساب شما کافی نمیباشد ')
+        bot.send_message(call.message.chat.id , '✣موجودی حساب شما کافی نمیباشد ⚠️\n ┊─ ابتدا موجودی خود را افزایش دهید و مجدد اقدام فرمایید .')
 
     elif user_.user_wallet >= product_price :
         new_wallet = (user_.user_wallet) - decimal.Decimal(product_price)
@@ -244,34 +234,29 @@ def tamdid_pay_with_wallet(call , bot , product_dict , panel_loaded):
             user_.user_wallet = new_wallet
             user_.save()
                 
-            if panel_loaded['one_panel'] == True :
-                if  ('open' and 'withcapcity') in info['statement'] :
-                    check_fun.check_capcity(panel_loaded['panel_pk'])
-
-            else :
-                if panel_loaded['two_panel'] == True :
-                    if  ('open' and 'withcapcity')  in info['statement']:
-                        check_fun.check_capcity(panel_loaded['panel_pk'])
-
         except Exception as error_1:
             print(f'an error eccured  when updating user wallet: \n\t {error_1}')
+
+        if panel_loaded['one_panel'] == True  or panel_loaded['two_panel']  == True :
+            if ('open' and 'zarfit') in info['statement'] :
+                PANEL_managing.check_capcity(int(panel_loaded['panel_pk']))
         
-
-        inovivces_ = create_inovices(user_id= user_ , user_username= call.from_user.username ,
-                                        panel_name = panel_.panel_name , product_name= info['product_name'],
-                                        data_limit= info['data_limit'] , expire_date= info['expire_date'] ,
-                                        pro_cost= info['pro_cost'] , config_name = info['config_name'] ,
-                                        paid_status = 1 , # 0 > unpaid , 1 > paid , 2 > waiting  , 3 > disagree 
-                                        paid_mode= 'wlt', kind_pay='Tamdid' )
+        inovivces_ = create_inovices(user_id= user_ , user_username= call.from_user.username , panel_name = panel_.panel_name , product_name= info['product_name'],
+                                    data_limit= info['data_limit'] , expire_date= info['expire_date'] , pro_cost= info['pro_cost'] , 
+                                    config_name = info['config_name'] ,paid_status = 1 , # 0 > unpaid , 1 > paid , 2 > waiting  , 3 > disagree 
+                                    paid_mode= 'wlt', kind_pay='Tamdid' )
+        
+        payments_ = payments.objects.create(user_id=user_ , amount=info['pro_cost'] , payment_stauts='accepted' , inovice_id=inovivces_)
+        
+        try :
+            send_request = panelsapi.marzban(info['panel_number']).put_user(info['config_name'] , info['product_id'])
+            if send_request is False :
+                return 'requset_false'
+            else :
+                return send_request 
             
-        inovivces2_ = inovices.objects.filter(user_id = user_).latest('created_date')
-        payments_ = payments.objects.create(user_id = user_ , amount = info['pro_cost'] ,payment_stauts = 'accepted' , inovice_id = inovivces2_)
-        send_request = panelsapi.marzban(info['panel_number']).put_user(info['config_name'] , info['product_id'])
-        if send_request is False :
-            return 'requset_false'
-        else :
-            return send_request 
-
+        except Exception as request_error:
+            print(f'error while sending request {request_error}')
 
 
 
@@ -281,7 +266,7 @@ def tamdid_pay_with_wallet(call , bot , product_dict , panel_loaded):
 
 def create_paycard_fish(tamdid:bool =False):
     if tamdid is not False:
-        user_fish = {'tamdid_fish_send' : False , 'tamdid_accpet_or_reject':False}
+        user_fish = {'tamdid_fish_send' : False , 'tamdid_accpet_or_reject':False , 'inovices' :None}
         return user_fish
     
     user_fish = {'fish_send' : False , 'accpet_or_reject':False , 'inovices' :None}    
@@ -318,21 +303,18 @@ def pay_with_card(call , bot , product_dict , user_fish ):
 def tamdid_pay_with_card(call , bot , product_dict , user_fish ):
     info = product_dict[call.from_user.id]
 
-    panel_name = v2panel.objects.get(id=info['panel_number'] ).panel_name
+    panel_name = v2panel.objects.get(id = int(info['panel_number'])).panel_name
     users_ = users.objects.get(user_id=call.from_user.id )
-
-    inovivces_ = create_inovices(user_id= users_ , user_username=call.from_user.username ,
-                                panel_name = panel_name , product_name= info['product_name'],
-                                data_limit= info['data_limit'] , expire_date= info['expire_date'] ,
-                                pro_cost= info['pro_cost'] , config_name = info['config_name'] ,
-                                paid_status= 2 , # 0 > unpaid , 1 > paid , 2 > waiting  , 3 > disagree
+    inovivces_ = create_inovices(user_id= users_ , user_username=call.from_user.username , panel_name = panel_name ,
+                                product_name= info['product_name'] , data_limit= info['data_limit'] , expire_date= info['expire_date'] ,
+                                pro_cost= info['pro_cost'] , config_name = info['config_name'] , paid_status= 2 , # 0 > unpaid , 1 > paid , 2 > waiting  , 3 > disagree
                                 paid_mode= 'kbk' , kind_pay='Tamdid' )
    
-    
     if call.from_user.id not in user_fish :
         user_fish[call.from_user.id] = create_paycard_fish(tamdid=True)
 
     user_fish[call.from_user.id]['tamdid_fish_send'] = True
+    user_fish[call.from_user.id]['inovices'] = inovivces_
     bot.send_message(chat_id = call.message.chat.id , text = buy_service_section_card_to_card_msg(info['pro_cost']))
 
 

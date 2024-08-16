@@ -148,6 +148,7 @@ class botsettings(models.Model):
     wallet_pay = models.SmallIntegerField(default=0 , null=False)
     kartbkart_pay = models.SmallIntegerField(default= 0 , null=False)
     forcechjoin = models.SmallIntegerField(default=0 , null=False)
+    moneyusrtousr = models.SmallIntegerField(default=0 , null=False)
     class Meta:
         db_table = 'v2_botsettings'
 

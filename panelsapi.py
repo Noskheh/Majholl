@@ -88,13 +88,18 @@ class marzban:
                     "on_hold_timeout": "2023-11-03T20:30:00",
                     "on_hold_expire_duration": 0}
         
-        get_header = marzban.get_token_acces(self)
-        put_user_requsts = requests.put(panel_url , json=proxy_dict , headers=get_header)
+        try : 
+            get_header = marzban.get_token_acces(self)
+            put_user_requsts = requests.put(panel_url , json=proxy_dict , headers=get_header)
 
-        if put_user_requsts.status_code == 200:
-            return json.loads(put_user_requsts.content)
-        else:
-            return False
+            if put_user_requsts.status_code == 200:
+                return json.loads(put_user_requsts.content)
+            else:
+                return False
+            
+        except Exception as adduser_error:
+            print(f'api says : {adduser_error}')
+            
 
 
 
