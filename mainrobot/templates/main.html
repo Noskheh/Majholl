@@ -1,0 +1,28 @@
+{% load static  %}
+<!DOCTYPE html>
+<html>
+    <header>
+        <link rel="stylesheet" href="{% static 'main.css' %}">
+
+    </header>
+    <body>
+
+
+        <header>
+            <h1> </h1>
+            <nav>
+                <ul>
+                    <li><a href="#">کیف پول </a></li>
+                    <li><a href="#"> وضعیت سرویس </a></li>
+                    <li><a href="#">محصولات من </a></li>
+                </ul>
+            </nav>
+        </header>
+
+        {% block content %}
+        {% endblock %}   
+
+
+    </body>
+
+</html>

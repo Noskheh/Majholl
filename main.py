@@ -13,23 +13,15 @@ from bottext import *
 import jdatetime , datetime
 #------------------------------------------------------------
 
-
-
 bot = telebot.TeleBot(token=BOTTOKEN.TOKEN[0], parse_mode="HTML", colorful_logs=True)
 
-#(//TODO add /add_panel to the text if theres no plan for first time
-#//TODO back from service status not working
-#//TODO avoid user from entering tamdid service when they have no config : done
+
 #//TODO panel static (امار پنل مرزبان )
-#//TODO remove any unnessecry print() function : done
-#//TODO enable owner to add channel or channels in database : in proccess
-#//TODO enable user to add his card : in proccess
-#//TODO add feature to increese or decreese user wallet
-#//TODO remove space before the links in how_to_send functions : done)
-
-
+#??//TODO avoid user from populating dictionaries  i mean when user wants to find his service and call its button he may leave it alone for long time and dicts will be populate for long time
+#//TODO add more section for checking force channel join 
 
 #= Welcomer
+USER_STATE  = {}
 @bot.message_handler(func=lambda message: '/start' in message.text)
 def start_bot(message) :
     user_ = message.from_user 
@@ -43,25 +35,24 @@ def start_bot(message) :
         CHNAGING_PRODUCT_DETAILS['Enable_Changing_Product_Deatails'] = False
         USER_ADMIN_INFO['admin_name'] = False
         USER_ADMIN_INFO['add_admin'] = False
-
-        """
-        if message.from_user.id in marzban_panel_api_user :
-            marzban_panel_api_user.pop(message.from_user.id)  
-
-        if message.from_user.id  in (USERS_BASKET):
-            USERS_BASKET.pop(message.from_user.id)
-        if message.from_user.id in (TAMDID_BASKETS_USER):
-            TAMDID_BASKETS_USER.pop(message.from_user.id)
-        """
-
+        
         #clear requests 
         clear_dict(marzban_panel_api_user , message.from_user.id)
         #clear USER_BASKETS 
         clear_dict(USERS_BASKET , message.from_user.id)
+        clear_dict(USER_PAYCARD_FISH , message.from_user.id)   
         #clear TAMDID_BASKERS_USER 
         clear_dict(TAMDID_BASKETS_USER , message.from_user.id)
-
-
+        clear_dict(TAMDID_FISH , message.from_user.id )
+        #clear USER_STATE
+        clear_dict(USER_STATE , message.from_user.id)
+        #clear USER_QUERY_SERVICE
+        clear_dict(USER_QUERY_SERVICE , message.from_user.id)
+        #clear TRANSFER_MONEY_USRTOUSR
+        clear_dict(TRANSFER_MONEY_USRTOUSR , message.chat.id )
+        # clear CHARGE_WALLET
+        clear_dict(CHARGE_WALLET , message.from_user.id)
+        
         bot.send_message(message.chat.id , welcome_msg , reply_markup= BotKb.main_menu_in_user_side(message.from_user.id))
 
     else :
@@ -127,9 +118,11 @@ def handler_buy_service_one_panel(call):
     panel_id = [i.id for i in panels_]
     #check user is joined or not
     if FORCE_JOIN_CHANNEL(call.from_user.id , bot) ==True :
-
+        
         #check received call.data and panels count
         if  call.data == 'buy_service' and  panels_.count() <= 1  : 
+
+
             if plans_loading_for_one_panel() == 'panel_disable' :
                 bot.send_message(call.message.chat.id , '⌛️پنل در حال بروزرسانی میباشد . لطفا بعدا مراجعه فرمایید')
             else : 
@@ -240,6 +233,15 @@ def handle_buyService_select_proplan(call) :
                 USERS_BASKET[call.from_user.id]['get_username'] = True
                 USERS_BASKET[call.from_user.id]['product_id'] = call_data[1]
                 USERS_BASKET[call.from_user.id]['statement'] = [call_data[2] , call_data[3]] 
+
+
+                
+                if call.from_user.id in USER_STATE and USER_STATE[call.from_user.id][0] in ('find_user_service' , 'charge_wallet'):
+                    clear_dict(USER_QUERY_SERVICE , call.from_user.id)
+                    clear_dict(CHARGE_WALLET , call.from_user.id)
+
+                USER_STATE[call.from_user.id] = ['buying_new_service' , time.time()]
+
                 bot.edit_message_text(buy_service_section_choosing_username_msg , call.message.chat.id , call.message.message_id)
    
     else :
@@ -256,25 +258,32 @@ def handle_buyService_select_proplan(call) :
 #> ./buy_services > get user username 
 @bot.message_handler(func=lambda message:(message.from_user.id in USERS_BASKET and len(USERS_BASKET) != 0  and USERS_BASKET[message.from_user.id]['get_username']==True))
 def get_username_for_config_name(message):
-    
-    if USERS_BASKET[message.from_user.id]['get_username']==True:
-        if message.text == '/cancel' or message.text == '/cancel'.upper():
-           clear_dict(USERS_BASKET , message.from_user.id)
-           bot.send_message(message.chat.id , welcome_msg , reply_markup=BotKb.main_menu_in_user_side(message.from_user.id)) 
 
-        else: 
-            if make_username_for_panel(message , bot , USERS_BASKET) != 'incorrect_username':
-                
-                USERS_BASKET[message.from_user.id] ['get_username'] = False
+    if FORCE_JOIN_CHANNEL(UserId=message.from_user.id , Bot=bot)==True:
 
-                call_data = USERS_BASKET[message.from_user.id]['product_id']
-                product_ = products.objects.get(id = call_data)
-                USERS_BASKET[message.from_user.id] ['product_name'] = product_.product_name
-                USERS_BASKET[message.from_user.id] ['data_limit'] = product_.data_limit
-                USERS_BASKET[message.from_user.id] ['expire_date'] = product_.expire_date
-                USERS_BASKET[message.from_user.id] ['pro_cost'] = product_.pro_cost
+        if USERS_BASKET[message.from_user.id]['get_username']==True:
+            if message.text == '/cancel' or message.text == '/cancel'.upper():
+                clear_dict(USERS_BASKET , message.from_user.id)
+                bot.send_message(message.chat.id , welcome_msg , reply_markup=BotKb.main_menu_in_user_side(message.from_user.id)) 
+
+            else: 
+                if make_username_for_panel(message , bot , USERS_BASKET) != 'incorrect_username':
                     
-                bot.send_message(message.chat.id , product_info_msg(USERS_BASKET[message.from_user.id]) , reply_markup=BotKb.confirmation())
+                    USERS_BASKET[message.from_user.id] ['get_username'] = False
+
+                    call_data = USERS_BASKET[message.from_user.id]['product_id']
+                    product_ = products.objects.get(id = call_data)
+                    USERS_BASKET[message.from_user.id] ['product_name'] = product_.product_name
+                    USERS_BASKET[message.from_user.id] ['data_limit'] = product_.data_limit
+                    USERS_BASKET[message.from_user.id] ['expire_date'] = product_.expire_date
+                    USERS_BASKET[message.from_user.id] ['pro_cost'] = product_.pro_cost
+
+
+                    bot.send_message(message.chat.id , product_info_msg(USERS_BASKET[message.from_user.id]) , reply_markup=BotKb.confirmation())
+
+    else :
+        bot.send_message(message.chat.id , text=force_channel_join_msg, reply_markup=BotKb.load_channels(bot , message.from_user.id))
+
 
 
 
@@ -282,24 +291,31 @@ def get_username_for_config_name(message):
 @bot.callback_query_handler(func = lambda call : call.data in ['verify_product' , 'pay_with_wallet' , 'pay_with_card' , 'back_from_verfying' , 'back_from_payment'] )
 def handle_selected_products(call) : 
 
-    if call.data == 'verify_product' :
-        bot.edit_message_text('⚪️ یک روش پرداخت را انتخاب نمایید' , call.message.chat.id , call.message.message_id , reply_markup=BotKb.payby_in_user_side()) 
+    if FORCE_JOIN_CHANNEL(UserId=call.from_user.id , Bot=bot)==True:
+
+        if call.data == 'verify_product' :
+            bot.edit_message_text('⚪️ یک روش پرداخت را انتخاب نمایید' , call.message.chat.id , call.message.message_id , reply_markup=BotKb.payby_in_user_side()) 
+    
+    else :
+        bot.send_message(call.message.chat.id , text=force_channel_join_msg, reply_markup=BotKb.load_channels(bot , call.from_user.id))
+
 
 
 
     #pay wallet
     if call.data == 'pay_with_wallet':
         req =pay_with_wallet(call , bot , USERS_BASKET , NUMBER_OF_PANEL_LOADED)
-        if req != ('requset_false' or None) :
-            bot.edit_message_text(paied_msg , call.message.chat.id , call.message.message_id)
-            bot.send_chat_action(chat_id=call.message.chat.id, action='typing')
-            time.sleep(3)
-            how_to_send(req, int(USERS_BASKET[call.from_user.id]['panel_number']) , bot , call.from_user.id)
-            users_ = users.objects.get(user_id = call.from_user.id)
-            panels_= v2panel.objects.get(id = USERS_BASKET[call.from_user.id]['panel_number'])
-            products_ = products.objects.get(id =USERS_BASKET[call.from_user.id]['product_id'] )
-            subscriptions_ = subscriptions.objects.create(user_id = users_ , product_id = products_ , panel_id = panels_ , user_subscription = USERS_BASKET[call.from_user.id]['usernameforacc'])
-            clear_dict(USERS_BASKET , call.from_user.id)  
+        if req != ('requset_false' or 'insufficent' or None) :
+            if isinstance(req , dict):
+                bot.edit_message_text(paied_msg , call.message.chat.id , call.message.message_id)
+                bot.send_chat_action(chat_id=call.message.chat.id, action='typing')
+                time.sleep(2.5)
+                how_to_send(req , int(USERS_BASKET[call.from_user.id]['panel_number']) , bot , call.from_user.id)
+                users_ = users.objects.get(user_id = call.from_user.id)
+                panels_= v2panel.objects.get(id = USERS_BASKET[call.from_user.id]['panel_number'])
+                products_ = products.objects.get(id =USERS_BASKET[call.from_user.id]['product_id'] )
+                subscriptions_ = subscriptions.objects.create(user_id = users_ , product_id = products_ , panel_id = panels_ , user_subscription = USERS_BASKET[call.from_user.id]['usernameforacc'])
+                clear_dict(USERS_BASKET , call.from_user.id)  
         else :
             print(f'something happened when sending request : {req}')
 
@@ -498,9 +514,16 @@ USER_QUERY_SERVICE = {}
 
 @bot.callback_query_handler(func= lambda call: call.data in ['service_status' ,  'get_config_link' , 'get_qrcode_link' , 'back_from_service_status' , 'back_from_user_service_status', 'get_removing_account', 'service_not_inlist']  or call.data.startswith(('serviceshow.' , 'get_new_link')))
 def show_services(call):
+
     Text_0 = 'برای نمایش وضعیت سرویس بر روی آن کلیک کنید'
-    if call.data=='service_status':
-        bot.edit_message_text(Text_0 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.show_service_status(call.from_user.id))
+    if FORCE_JOIN_CHANNEL(UserId=call.from_user.id , Bot=bot)==True:
+        
+        if call.data=='service_status':
+
+            bot.edit_message_text(Text_0 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.show_service_status(call.from_user.id))
+    else :
+        bot.send_message(call.message.chat.id , text=force_channel_join_msg, reply_markup=BotKb.load_channels(bot , call.from_user.id))
+
 
 
 
@@ -620,6 +643,13 @@ TO CANCEL : /cancel
 .
 """
         USER_QUERY_SERVICE[call.from_user.id] = {'query':True}
+
+        if call.from_user.id in USER_STATE and USER_STATE[call.from_user.id][0] in ('buying_new_service' , 'charge_wallet'):
+            clear_dict(USERS_BASKET , call.from_user.id)
+            clear_dict(CHARGE_WALLET , call.from_user.id)
+
+        USER_STATE[call.from_user.id] = ['find_user_service' , time.time()]
+
         bot.edit_message_text(Text_5, call.message.chat.id , call.message.message_id)
 
 
@@ -657,16 +687,16 @@ def rm_mysub(message):
 
 
 
-
-
 @bot.message_handler(func=lambda message: (len(USER_QUERY_SERVICE) >= 1 and message.from_user.id in USER_QUERY_SERVICE and USER_QUERY_SERVICE[message.from_user.id]['query'] == True))
 def query_for_user_service(message):
     if message.from_user.id in USER_QUERY_SERVICE and USER_QUERY_SERVICE[message.from_user.id]['query'] == True:
+
         if message.text == '/cancel' or message.text =='/cancel'.upper():
             clear_dict(USER_QUERY_SERVICE , message.from_user.id)
             Text_cancel = f'برای نمایش وضعیت سرویس بر روی آن کلیک کنید \n'
             bot.send_message(message.chat.id , Text_cancel, reply_markup=BotKb.show_service_status(message.from_user.id))
         else:
+            
             msg = message.text
             patt = r'^https?:\/\/[\d\w\.\-\_\/]+'
             if re.search(patt, msg) is not None:
@@ -736,7 +766,6 @@ def query_for_user_service(message):
 
 
 
-
 # - 3 user-side
 # --------------------------------------------------------------------------------------------------------------------------
 # ------------------------- RENEW-SERVICE ----------------------------------------------------------------------------------
@@ -758,13 +787,20 @@ TAMDID_FISH = {}
 
 @bot.callback_query_handler(func= lambda call : call.data in ['tamdid_service', 'tamdid_pay_with_wallet', 'tamdid_pay_with_card',   'verify_product_for_tamdid', 'back_from_user_tamdid_service', 'tamdid_back_two_panel', 'back_from_verfying_tamdid', 'back_from_payment_tamdid'] or call.data.startswith(('Tamidi:' , 'tamdid_panelid-' , 'newingtamdid_')))
 def tamdid_service(call):
-    if call.data == 'tamdid_service':
-        user_sub = BotKb.show_user_subsctription(call.from_user.id)
-        Text_1= ' ✢ برای تمدید سرویس اشتراکی را که میخواهید انتخاب نمایید '
-        if user_sub =='no_sub_user_have':
-            bot.answer_callback_query(call.id , 'شما هیچ سرویسی برای تمدید ندارید')
-        else:
-            bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.show_user_subsctription(call.from_user.id))
+    
+    if FORCE_JOIN_CHANNEL(UserId=call.from_user.id , Bot=bot)==True:
+
+        if call.data == 'tamdid_service':
+
+            user_sub = BotKb.show_user_subsctription(call.from_user.id)
+            Text_1= ' ✢ برای تمدید سرویس اشتراکی را که میخواهید انتخاب نمایید '
+            if user_sub =='no_sub_user_have':
+                bot.answer_callback_query(call.id , 'شما هیچ سرویسی برای تمدید ندارید')
+            else:
+                bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.show_user_subsctription(call.from_user.id))
+    else :
+        bot.send_message(call.message.chat.id , text=force_channel_join_msg, reply_markup=BotKb.load_channels(bot , call.from_user.id))
+
 
 
     if call.data.startswith('Tamidi:'):
@@ -807,18 +843,6 @@ def tamdid_service(call):
             button_back_2more = InlineKeyboardButton(text='✤ - بازگشت به منوی قبلی - ✤', callback_data='tamdid_back_two_panel')
             keyboard.add(button_back_2more)
             bot.edit_message_text(buy_service_section_choosing_panel_msg , call.message.chat.id , call.message.message_id , reply_markup=keyboard)
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     if call.data.startswith('tamdid_panelid-') :
@@ -883,12 +907,13 @@ def tamdid_service(call):
 
     if call.data =='tamdid_pay_with_wallet':
         req = tamdid_pay_with_wallet(call , bot , TAMDID_BASKETS_USER , TAMDID_PANEL_LOADING)
-        if req != ('requset_false' or None):
-            bot.edit_message_text(paied_msg , call.message.chat.id , call.message.message_id)
-            bot.send_chat_action(chat_id=call.message.chat.id, action='typing')
-            time.sleep(3)
-            how_to_send(req, int(TAMDID_BASKETS_USER[call.from_user.id]['panel_number']) , bot , call.from_user.id)
-            clear_dict(TAMDID_BASKETS_USER , call.from_user.id)
+        if req != ('requset_false' or 'insufficent' or None):
+            if isinstance(req , dict):
+                bot.edit_message_text(paied_msg , call.message.chat.id , call.message.message_id)
+                bot.send_chat_action(chat_id=call.message.chat.id, action='typing')
+                time.sleep(2.5)
+                how_to_send(req, int(TAMDID_BASKETS_USER[call.from_user.id]['panel_number']) , bot , call.from_user.id)
+                clear_dict(TAMDID_BASKETS_USER , call.from_user.id)
         else :
             print(f'requset is failed related to the api')
 
@@ -1083,9 +1108,15 @@ def charge_wallet_dict():
 @bot.callback_query_handler(func = lambda call : call.data in ['wallet_profile', 'back_from_wallet_profile', 'user_id','username', 'tranfert_money_from_wallet' ,'charge_wallet']) 
 def wallet_profile(call):
 
-    if call.data=='wallet_profile':
-        Text_1 ='✤ - پروفایل من : '
-        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup= BotKb.wallet_profile(call.from_user.id))
+    if FORCE_JOIN_CHANNEL(UserId=call.from_user.id , Bot=bot)==True:
+
+        if call.data=='wallet_profile':
+            Text_1 ='✤ - پروفایل من : '
+            bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup= BotKb.wallet_profile(call.from_user.id))
+
+    else :
+        bot.send_message(call.message.chat.id , text=force_channel_join_msg, reply_markup=BotKb.load_channels(bot , call.from_user.id))
+
 
 
     if call.data=='user_id':
@@ -1117,10 +1148,18 @@ def wallet_profile(call):
 
 
 
-    if call.data=='charge_wallet':
+    if call.data == 'charge_wallet':
         clear_dict(CHARGE_WALLET , call.from_user.id)
         CHARGE_WALLET[call.from_user.id] = charge_wallet_dict()
         CHARGE_WALLET[call.from_user.id]['charge_wallet'] = True
+
+        if call.from_user.id in USER_STATE and USER_STATE[call.from_user.id] in ('buying_new_service' , 'find_user_service'):
+            clear_dict(USERS_BASKET , call.from_user.id)
+            clear_dict(USER_QUERY_SERVICE , call.from_user.id)
+
+        USER_STATE[call.from_user.id] = ['charge_wallet' , time.time()]
+
+
         bot.send_message(call.message.chat.id ,'💰مبلغ مورد نظر را به تومان برای شارژ کیف پول خود را وارد نمایید \n\n برای کنسل کردن انتقال  : /CANCEL')
 
 
@@ -1134,8 +1173,15 @@ def wallet_profile(call):
 
 
 # ./wallet-profile > charge - wallet
-@bot.message_handler(func= lambda message: ( message.from_user.id in CHARGE_WALLET and len(CHARGE_WALLET) >=1  and CHARGE_WALLET[message.from_user.id]['charge_wallet'] == True) or (message.from_user.id in CHARGE_WALLET and len(CHARGE_WALLET) >=1 and CHARGE_WALLET[message.from_user.id]['send_fish'] == True) , content_types=['text','photo'])
+@bot.message_handler(func= lambda message: message.text =='/add_money'  or( message.from_user.id in CHARGE_WALLET and len(CHARGE_WALLET) >=1  and CHARGE_WALLET[message.from_user.id]['charge_wallet'] == True) or (message.from_user.id in CHARGE_WALLET and len(CHARGE_WALLET) >=1 and CHARGE_WALLET[message.from_user.id]['send_fish'] == True) , content_types=['text','photo'])
 def charge_wallet_profilewallet(message):
+
+    if message.text == '/add_money' and message.content_type =='text':
+        clear_dict(CHARGE_WALLET , message.from_user.id)
+        CHARGE_WALLET[message.from_user.id] = charge_wallet_dict()
+        CHARGE_WALLET[message.from_user.id]['charge_wallet'] = True
+        bot.send_message(message.chat.id ,'💰مبلغ مورد نظر را به تومان برای شارژ کیف پول خود را وارد نمایید \n\n برای کنسل کردن انتقال  : /CANCEL')
+        return
 
     if CHARGE_WALLET[message.from_user.id]['charge_wallet'] == True:
         if message.text =='/cancel' or message.text =='/cancel'.upper():
@@ -1353,12 +1399,12 @@ def tranfert_money_from_wallet(message):
 def bot_mangement(call) :
     if call.data=='robot_management':
         Text_1='به مدیریت ربات خوش امدید '
-        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.management_menu_in_admin_side())
+        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.management_menu_in_admin_side(user_id = call.from_user.id))
     
     
     if call.data=='back_from_management':
-        Text_back='/خوش آمدید /'
-        bot.edit_message_text(Text_back , call.message.chat.id ,call.message.message_id , reply_markup=BotKb.main_menu_in_user_side(call.from_user.id))
+        
+        bot.edit_message_text(welcome_msg , call.message.chat.id ,call.message.message_id , reply_markup=BotKb.main_menu_in_user_side(call.from_user.id))
 
 
 
@@ -1379,14 +1425,17 @@ def handle_panel(call):
 
 
     if call.data=='panels_management' :
-        Text_1='شما در حال مدیریت کردن بخش پنل ها هستید'
-        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.panel_management_menu_in_admin_side())
-
+        admins_ = admins.objects.get(user_id = int(call.from_user.id))
+        if (admins_.acc_panels == 1 and admins_.acc_panels ==1) or admins_.is_owner ==1:
+            Text_1='شما در حال مدیریت کردن بخش پنل ها هستید'
+            bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.panel_management_menu_in_admin_side())
+        else :
+            bot.send_message(call.message.chat.id , 'شما اجازه دسترسی به این قسمت را ندارید')
 
 
     if call.data=='back_from_panel_manageing':
         Text_back='به مدیریت ربات خوش امدید '
-        bot.edit_message_text(Text_back , call.message.chat.id , call.message.message_id , reply_markup=BotKb.management_menu_in_admin_side())
+        bot.edit_message_text(Text_back , call.message.chat.id , call.message.message_id , reply_markup=BotKb.management_menu_in_admin_side(user_id = call.from_user.id))
 
 
 
@@ -1434,8 +1483,19 @@ PANEL_INFORMATION = {'Panel_Name':'' , 'Panel_Url':'' ,
 
 
 #> ./Management > Panels > Add_panel - Panel_Name(step-1)
-@bot.message_handler(func=lambda message:PANEL_RECEIVING_STATE['Enable_Panel_Adding']==True and PANEL_RECEIVING_STATE['Panel_Name_Receiving']==False)
+@bot.message_handler(func=lambda message: message.text =='/add_panel' or PANEL_RECEIVING_STATE['Enable_Panel_Adding']==True and PANEL_RECEIVING_STATE['Panel_Name_Receiving']==False)
 def handle_incoming_panelName(message):
+
+    if message.text =='/add_panel' :
+        admins_ = admins.objects.get(user_id = int(message.from_user.id))
+        if message.from_user.id == admins_.user_id and admins_.is_owner == 1 or (admins_.is_admin and admins_.acc_panels ==1):
+            PANEL_RECEIVING_STATE['Enable_Panel_Adding']=True
+            Text_0='یک اسم برای پنل خود انتخاب کنید؟\n⚠️.دقت کنید که این اسم مستقیما در قسمت خرید سرویس ها نمایش داده میشود\n\nمثال ها : \n سرویس هوشمند ، سرور مولتی لوکیشن \n\nTO CANCEL : /CANCEL'
+            bot.send_message(message.chat.id , Text_0)
+        else:
+            bot.send_message(message.chat.id , 'شما نمتوانید پنلی را اضافه کنید')
+        return
+    
     if PANEL_RECEIVING_STATE['Panel_Name_Receiving']==False and (message.text=='/cancel' or message.text=='/cancel'.upper()):
         PANEL_RECEIVING_STATE.update({key:False for key in PANEL_RECEIVING_STATE})
         Text_1='✍🏻 .اضافه کردن پنل لغو شد!!'
@@ -1642,6 +1702,7 @@ def handle_panel_management(call) :
         Text_8='حالت ریلیتی - فلو برای کل اشتراک ها رواین پنل انتخاب کنید'
         bot.edit_message_text(Text_8 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.changin_reality_flow() )
 
+
     #- Change-Capcity 
     if call.data.startswith('panel_capacity_'):
         Text_9='🔗برای تغییر تنظیمات  بر روی دکمه ها کلیک کنید'
@@ -1754,14 +1815,20 @@ def handle_products(call) :
     panel_=v2panel.objects.all()
     Text_0='هیچ پنلی برای لود کردن وجود ندارد \n\n اولین پنل خود را اضافه کنید :/add_panel'
 
+
     if call.data=='products_management':
-        Text_1='✏️شما در حال مدیریت کردن بخش محصولات میباشید'
-        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.product_management_menu_in_admin_side())
+        admins_ = admins.objects.get(user_id = int(call.from_user.id))
+        if (admins_.acc_panels == 1 and admins_.acc_products ==1) or admins_.is_owner ==1:
+            Text_1='✏️شما در حال مدیریت کردن بخش محصولات میباشید'
+            bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.product_management_menu_in_admin_side())
+        else :
+            bot.send_message(call.message.chat.id , 'شما اجازه دسترسی به این قسمت را ندارید')
+
 
 
     if call.data=='back_from_products_manageing':
         Text_2='به مدیریت ربات خوش امدید'
-        bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.management_menu_in_admin_side())
+        bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.management_menu_in_admin_side(user_id = call.from_user.id))
 
 
     #- Adding products 
@@ -2225,20 +2292,22 @@ def get_changing_product_details_name(message):
 # -------------------------admins_management------------------------------------------------------------------------------------#
 # --------------------------------------------------------------------------------------------------------------------------------#
 
-
-#//TODO add مدیریت سطح دسترسی admins 
-#//TODO add functions to enable admins access 
 #//TODO make it better if you could
 
 USER_ADMIN_INFO = {'user_id':None , 'page_item':1 ,
                    'add_admin':False ,'add_admin_id':int ,
                      'admin_name' : False}
 
-@bot.callback_query_handler(func= lambda call  : call.data in ['admins_management', 'add_new_admin', 'back_from_admin_menu'] or call.data.startswith(('Anext_','Abefore_' ,'load_' , 'adminremove_')))
+@bot.callback_query_handler(func= lambda call  : call.data in ['admins_management', 'add_new_admin', 'back_from_admin_menu' , 'back_from_admin_access'] or call.data.startswith(('Anext_','Abefore_' ,'load_' , 'adminremove_' , 'adminaccess_', 'accpanels_','accproducts_' ,'accpbotseeting_' , 'accadmins_' , 'accusermanagment_')))
 def admins_management(call):
-    if call.data == 'admins_management':
 
-        bot.edit_message_text('برای مدیریت  ادمین ها بروی انها کلیک کیند ', call.message.chat.id , call.message.message_id , reply_markup=BotKb.show_admins())
+    if call.data == 'admins_management':
+        admins_ = admins.objects.get(user_id = int(call.from_user.id))
+        if (admins_.acc_panels == 1 and admins_.acc_admins ==1) or admins_.is_owner ==1:
+            bot.edit_message_text('برای مدیریت  ادمین ها بروی انها کلیک کیند ', call.message.chat.id , call.message.message_id , reply_markup=BotKb.show_admins())
+        else :
+            bot.send_message(call.message.chat.id , 'شما اجازه دسترسی به این قسمت را ندارید')
+
 
 
     if call.data.startswith('Anext_'):
@@ -2266,9 +2335,8 @@ def admins_management(call):
     if call.data.startswith('adminremove_'):
         call_data = call.data.split('_')
         try:
-        
             admins_ = admins.objects.get(user_id = call_data[-1])
-            if admins_.is_owner ==1 :
+            if admins_.is_owner == 1 :
                 bot.answer_callback_query(call.id , 'شما نمیتوانید اونر بات را حذف کنید')
             else:
                 admins_.delete()
@@ -2279,10 +2347,89 @@ def admins_management(call):
             print(f'error while deleteing admin from db // error msg : {delete_admin_error}')
 
 
+
+    if call.data.startswith('adminaccess_'):
+        call_data = call.data.split('_')
+        admins_ = admins.objects.get(user_id = call.from_user.id).is_owner 
+        admins_2 = admins.objects.get(user_id= int(call_data[-1])).is_owner
+        if admins_ == 1 :
+            if admins_2 == 1 :
+                bot.send_message(call.message.chat.id , 'مدیریت کردن دسترسی های اونر مجاز نمیباشد')
+            else: 
+                Text_1= f'به قسمت مدیریت دسترسی های ادمین خوش امدید'
+                bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_admin_acc(user_id= int(call_data[-1])))
+        else:
+            bot.send_message(call.message.chat.id ,'شما اجازه مدیریت کردن دسترسی ها را ندارید' )
+
+
+    if call.data.startswith('accpanels_'):
+        call_data = call.data.split('_')
+        admins_ = admins.objects.get(user_id = int(call_data[-1]))
+        new_acc_panels = 1 if admins_.acc_panels == 0 else  0 
+        admins_.acc_panels = new_acc_panels
+        admins_.save()
+        Text_2= f'به قسمت مدیریت دسترسی های ادمین خوش امدید'
+        bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_admin_acc(user_id= int(call_data[-1])))
+
+
+    if call.data.startswith('accproducts_'):
+        call_data = call.data.split('_')
+        admins_ = admins.objects.get(user_id = int(call_data[-1]))
+        new_acc_products = 1 if admins_.acc_products == 0 else  0 
+        admins_.acc_products = new_acc_products
+        admins_.save()
+        Text_3= f'به قسمت مدیریت دسترسی های ادمین خوش امدید'
+        bot.edit_message_text(Text_3 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_admin_acc(user_id= int(call_data[-1])))
+
+
+
+    if call.data.startswith('accpbotseeting_'):
+        call_data = call.data.split('_')
+        admins_ = admins.objects.get(user_id = int(call_data[-1]))
+        new_acc_botmanagment = 1 if admins_.acc_botmanagment == 0 else  0 
+        admins_.acc_botmanagment = new_acc_botmanagment
+        admins_.save()
+        Text_4= f'به قسمت مدیریت دسترسی های ادمین خوش امدید'
+        bot.edit_message_text(Text_4 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_admin_acc(user_id= int(call_data[-1])))
+
+
+
+
+    if call.data.startswith('accadmins_'):
+        call_data = call.data.split('_')
+        admins_ = admins.objects.get(user_id = int(call_data[-1]))
+        new_acc_admins = 1 if admins_.acc_admins == 0 else  0 
+        admins_.acc_admins = new_acc_admins
+        admins_.save()
+        Text_5= f'به قسمت مدیریت دسترسی های ادمین خوش امدید'
+        bot.edit_message_text(Text_5 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_admin_acc(user_id= int(call_data[-1])))
+
+
+    if call.data.startswith('accusermanagment_'):
+        call_data = call.data.split('_')
+        admins_ = admins.objects.get(user_id = int(call_data[-1]))
+        new_acc_users = 1 if admins_.acc_users == 0 else  0 
+        admins_.acc_users = new_acc_users
+        admins_.save()
+        Text_5= f'به قسمت مدیریت دسترسی های ادمین خوش امدید'
+        bot.edit_message_text(Text_5 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_admin_acc(user_id= int(call_data[-1])))
+
+
+
+
+    if call.data =='back_from_admin_access':
+        Text_back = 'برای مدیریت  ادمین ها بروی انها کلیک کنید'
+        bot.edit_message_text(Text_back , call.message.chat.id , call.message.message_id , reply_markup= BotKb.show_admins())
+
+
+
+
+
+
     if call.data =='back_from_admin_menu':
             USER_ADMIN_INFO['admin_name'] = False
             USER_ADMIN_INFO['add_admin'] = False
-            bot.edit_message_text('به مدیریت ربات خوش امدید' , call.message.chat.id , call.message.message_id , reply_markup= BotKb.management_menu_in_admin_side())
+            bot.edit_message_text('به مدیریت ربات خوش امدید' , call.message.chat.id , call.message.message_id , reply_markup= BotKb.management_menu_in_admin_side(user_id = call.from_user.id))
 
 
 
@@ -2304,7 +2451,7 @@ def add_new_admin(message):
 
     if USER_ADMIN_INFO['admin_name'] == True and USER_ADMIN_INFO['add_admin'] == False:
         try:
-            admins_ = admins.objects.create(admin_name=message.text, user_id=USER_ADMIN_INFO['add_admin_id'], is_admin=1, is_owner=0)
+            admins_ = admins.objects.create(admin_name=message.text, user_id=USER_ADMIN_INFO['add_admin_id'], is_admin=1, is_owner=0, acc_botmanagment=0, acc_panels=0, acc_products=0, acc_admins=0)
         except Exception as error_admin_adding:
             print(f'Error while adding admin to db: {error_admin_adding}')
             bot.send_message(message.chat.id, 'خطایی در افزودن ادمین به دیتابیس رخ داد')
@@ -2348,23 +2495,11 @@ def bot_statics(call):
 
 
     if call.data == 'back_from_bot_statics':
-        bot.edit_message_text('به مدیریت ربات خوش امدید', call.message.chat.id , call.message.message_id , reply_markup= BotKb.management_menu_in_admin_side())
+        bot.edit_message_text('به مدیریت ربات خوش امدید', call.message.chat.id , call.message.message_id , reply_markup= BotKb.management_menu_in_admin_side(user_id = call.from_user.id))
 
 #---------------------------------------------------------------------------------------------------------------------------------#
 # -------------------------bot_management------------------------------------------------------------------------------------#
 # --------------------------------------------------------------------------------------------------------------------------------#
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -2374,26 +2509,28 @@ ADD_BANK_KARD = {'bank_name_stat' : False , 'bank_name' : str ,
 
 
 @bot.callback_query_handler(func= lambda call: call.data in ['bot_managment', 'manage_bank_cards' ,'walletpay_status', 'kartbkart_status','manage_shomare_kart', 'back_to_management_menu', 'back_from_mange_howtopay', 'back_from_manage_shomare_kart', 'back_from_manage_shomare_karts' , 'add_new_kart_number', 'moneyusrtousr_status'] or call.data.startswith(('mkart_' , 'rmkart_', 'chstatus_shomarekart_' , 'userin_pays_')))
-def bot_managment(call):
+def bot_managment_payment(call):
     status_txt = lambda botstatus : '❌غیر فعال' if botstatus == 0 else  '✅فعال'
-
-
+    
     if call.data == 'bot_managment':
-        bot.edit_message_text('به قسمت تنظیمات ربات خوش امدید ' , call.message.chat.id , call.message.message_id , reply_markup=BotKb.bot_management())
+        admins_ = admins.objects.get(user_id = int(call.from_user.id))
+        if (admins_.acc_panels == 1 and admins_.acc_botmanagment ==1)or admins_.is_owner ==1:
+            bot.edit_message_text('به قسمت تنظیمات ربات خوش امدید ' , call.message.chat.id , call.message.message_id , reply_markup=BotKb.bot_management())
+        else :
+            bot.send_message(call.message.chat.id , 'شما اجازه دسترسی به این قسمت را ندارید')
+
 
     if call.data =='manage_bank_cards':
         Text_2 = 'برای مدیریت کردن نحوه پرداخت از گزینه های زیر استفاده نمایید'
         bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id, reply_markup=BotKb.manage_howtopay())
 
 
-
     if call.data =='back_to_management_menu':
-        bot.edit_message_text('به مدیریت ربات خوش امدید', call.message.chat.id , call.message.message_id , reply_markup= BotKb.management_menu_in_admin_side())        
+        bot.edit_message_text('به مدیریت ربات خوش امدید', call.message.chat.id , call.message.message_id , reply_markup= BotKb.management_menu_in_admin_side(user_id = call.from_user.id))        
 
     if call.data =='back_from_mange_howtopay':
         bot.edit_message_text('به قسمت تنظیمات ربات خوش امدید' , call.message.chat.id , call.message.message_id , reply_markup=BotKb.bot_management())
     
-
 
 
     if call.data =='walletpay_status':
@@ -2416,7 +2553,6 @@ def bot_managment(call):
         bot.edit_message_text(Text_3, call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_howtopay())
 
 
-
     if call.data == 'moneyusrtousr_status':
         botsettings_ = botsettings.objects.all()
         for i in botsettings_:
@@ -2429,13 +2565,9 @@ def bot_managment(call):
 
 
 
-
-
-
     if call.data =='manage_shomare_kart':
         Text_4='به قسمت مدیریت کردن شماره کارت ها خوش امدید'
         bot.edit_message_text(Text_4 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_shomarekart())
-
 
 
 
@@ -2444,40 +2576,42 @@ def bot_managment(call):
         shomarekart_ = shomarekart.objects.get(bank_card= call_data[-1])
         use_status = 'عدم استفاده' if shomarekart_.bank_inmsg == 0 else 'در حال استفاده'
         Text_5 = f"""
-وضعیت کارت :‌ {status_txt(shomarekart_.bank_status)}
-نام صاحب کارت : {shomarekart_.ownername}
-شماره کارت : {shomarekart_.bank_card}
-نام بانک کارت : {shomarekart_.bank_name}
-وضعیت استفاده : {use_status}
+┐ - وضعیت کارت :‌ {status_txt(shomarekart_.bank_status)}
+
+ ┊─ نام صاحب کارت : {shomarekart_.ownername}
+ ┊─  نام بانک کارت : {shomarekart_.bank_name}
+ ┊─ شماره کارت : {shomarekart_.bank_card}
+
+┘ - وضعیت استفاده : {use_status}
+.
 """
         bot.edit_message_text(Text_5 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_kart(call_data[-1]))
-
-
 
 
 
     if call.data.startswith('userin_pays_'):
         call_data = call.data.split('_')
-        shomarekart_bank_inuse_false = shomarekart.objects.filter(bank_inmsg =1).all()
+        shomarekart_bank_inuse_false = shomarekart.objects.filter(bank_inmsg = 1).exclude(bank_card = call_data[-1]).all()
         for i in shomarekart_bank_inuse_false:
             i.bank_inmsg = 0
             i.save()
         shomarekart_ = shomarekart.objects.get(bank_card= call_data[-1])
-        new_use_status = 1 if shomarekart_.bank_inmsg ==0 else 0
+        new_use_status = 1 if shomarekart_.bank_inmsg == 0 else 0
         shomarekart_.bank_inmsg = new_use_status
         shomarekart_.save()
 
         use_status = 'عدم استفاده' if shomarekart_.bank_inmsg == 0 else 'در حال استفاده'
         Text_5 = f"""
-وضعیت کارت :‌ {status_txt(shomarekart_.bank_status)}
-نام صاحب کارت : {shomarekart_.ownername}
-شماره کارت : {shomarekart_.bank_card}
-نام بانک کارت : {shomarekart_.bank_name}
-وضعیت استفاده : {use_status}
+┐ - وضعیت کارت :‌ {status_txt(shomarekart_.bank_status)}
+
+ ┊─ نام صاحب کارت : {shomarekart_.ownername}
+ ┊─  نام بانک کارت : {shomarekart_.bank_name}
+ ┊─ شماره کارت : {shomarekart_.bank_card}
+
+┘ - وضعیت استفاده : {use_status}
+.
 """
         bot.edit_message_text(Text_5 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_kart(call_data[-1]))
-
-
 
 
 
@@ -2499,11 +2633,14 @@ def bot_managment(call):
         shomarekart_.save()
         use_status = 'عدم استفاده' if shomarekart_.bank_inmsg == 0 else 'در حال استفاده'
         Text_6 = f"""
-وضعیت کارت :‌ {status_txt(shomarekart_.bank_status)}
-نام صاحب کارت : {shomarekart_.ownername}
-شماره کارت : {shomarekart_.bank_card}
-نام بانک کارت : {shomarekart_.bank_name}
-وضعیت استفاده : {use_status}
+┐ - وضعیت کارت :‌ {status_txt(shomarekart_.bank_status)}
+
+ ┊─ نام صاحب کارت : {shomarekart_.ownername}
+ ┊─  نام بانک کارت : {shomarekart_.bank_name}
+ ┊─ شماره کارت : {shomarekart_.bank_card}
+
+┘ - وضعیت استفاده : {use_status}
+.
 """
         bot.edit_message_text(Text_6 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_kart(call_data[-1]))
 
@@ -2525,6 +2662,8 @@ def bot_managment(call):
         ADD_BANK_KARD['bank_name_stat'] = True
         bot.send_message(call.message.chat.id, 'نام بانک را ارسال نمایید')
         
+
+
 
 
 
@@ -2554,6 +2693,465 @@ def handle_newbank_kard(message):
         shomarekart.objects.create(bank_name=ADD_BANK_KARD['bank_name'], bank_card=ADD_BANK_KARD['bank_kart'] , ownername=ADD_BANK_KARD['bank_ownername'] , bank_status=0 , bank_inmsg=0)
         bot.send_message(message.chat.id , 'شماره کارت با موفقیت اضافه شد' , reply_markup=BotKb.manage_shomarekart())
         return
+
+
+
+
+
+
+
+
+#----------------------------------------------------------------------------------------------------------------------------#
+# -------------------------channel management--------------------------------------------------------------------------------#
+# ---------------------------------------------------------------------------------------------------------------------------#
+
+
+
+
+
+ADD_NEW_CHANNEL = {'ch_name_stat' : False , 'ch_name' : str ,
+                'ch_id_stat': False , 'ch_id' : str ,}
+
+
+# force join channel 
+@bot.callback_query_handler(func= lambda call : call.data in ['manage_force_channel_join' , 'forcechjoin' ,'manage_forcejoin', 'back_from_manage_force_ch' , 'back_from_managing_force_ch' , 'back_from_manage_channel' , 'add_new_force_channel'] or call.data.startswith(('mfch_' , 'status_chf_' , 'rm_chf_')))
+def manage_bot_join_ch(call):
+    status_txt = lambda botstatus : '❌غیر فعال' if botstatus == 0 else  '✅فعال'
+
+    if call.data == 'manage_force_channel_join':
+        Text_1 = f'به قسمت مدیریت جوین اجباری خوش امدید'
+        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_joinch())
+
+
+    if call.data == 'forcechjoin':
+        botsettings_ = botsettings.objects.all()
+        for i in botsettings_:
+            new_status = 1 if i.forcechjoin == 0 else 0 
+            i.forcechjoin = new_status
+            i.save()
+        Text_2 = f'به قسمت مدیریت جوین اجباری خوش امدید \n\n وضعیت جوین اجباری :‌{status_txt(i.forcechjoin)}'
+        bot.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_joinch())
+
+
+
+    if call.data =='back_from_manage_force_ch':
+        Text_back_1 = 'به قسمت تنظیمات ربات خوش امدید' 
+        bot.edit_message_text(Text_back_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.bot_management())
+
+
+
+
+    if call.data =='back_from_managing_force_ch':
+        Text_back_2 = f'به قسمت مدیریت جوین اجباری خوش امدید'
+        bot.edit_message_text(Text_back_2 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_joinch())
+
+
+
+    if call.data == 'manage_forcejoin':
+        Text_3 = f'به مدیریت چنل ها خوش امدید \n چنلی را که میخواهید مدیریت کنید را انتخاب نمایید'
+        bot.edit_message_text(Text_3 , call.message.chat.id , call.message.message_id , reply_markup=botkb.manage_channels())
+
+
+
+
+    if call.data.startswith('mfch_'):
+        call_data = call.data.split('_')
+        channels_ = channels.objects.get(id = int(call_data[-1]))
+        Text_4 = f"""
+┐ - وضعیت چنل :‌ {status_txt(channels_.ch_status)}
+
+ ┊─ نام چنل : {channels_.channel_name}
+ ┊─   ادرس چنل : {channels_.channel_url or channels_.channel_id}
+
+.
+"""
+        bot.edit_message_text(Text_4 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_ch(channel_id= int(call_data[-1])))
+
+
+
+
+    if call.data.startswith('status_chf_'):
+        call_data = call.data.split("_")
+        channels_ = channels.objects.get(id = int(call_data[-1]))
+        new_status = 1 if channels_.ch_status == 0 else 0 
+        channels_.ch_status = new_status
+        channels_.save()
+        Text_4 = f"""
+┐ - وضعیت چنل :‌ {status_txt(channels_.ch_status)}
+
+ ┊─ نام چنل : {channels_.channel_name}
+ ┊─   ادرس چنل : {channels_.channel_url or channels_.channel_id}
+
+.
+"""
+        bot.edit_message_text(Text_4 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_ch(channel_id= int(call_data[-1])))
+
+ 
+
+
+    if call.data.startswith('rm_chf_'):
+        call_data = call.data.split('_')
+        try :
+            channels_ = channels.objects.get(id = int(call_data[-1])).delete()
+        except Exception as rm_ch_error:
+            print(f'error during remove channel \n error msg : {rm_ch_error}')
+        Text_5 = f'به مدیریت چنل ها خوش امدید \n چنلی را که میخواهید مدیریت کنید را انتخاب نمایید'
+        bot.edit_message_text(Text_5 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_channels())
+
+
+
+    if call.data =='back_from_manage_channel':
+        Text_back_3 = f'به مدیریت چنل ها خوش امدید \n چنلی را که میخواهید مدیریت کنید را انتخاب نمایید'
+        bot.edit_message_text(Text_back_3 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_channels())
+
+
+    if call.data =='add_new_force_channel':
+        ADD_NEW_CHANNEL['ch_name_stat'] = True
+        bot.send_message(call.message.chat.id , 'یک نام دلخواه برای چنل انتخاب کنید')
+
+
+@bot.message_handler(func= lambda message : ADD_NEW_CHANNEL['ch_name_stat']==True or ADD_NEW_CHANNEL['ch_id_stat']==True)
+def handle_add_ch(message):
+    if ADD_NEW_CHANNEL['ch_name_stat']==True:
+        ADD_NEW_CHANNEL['ch_name_stat'] = False
+        ADD_NEW_CHANNEL['ch_id_stat'] = True
+        ADD_NEW_CHANNEL['ch_name'] = message.text
+        bot.send_message(message.chat.id , ' ایدی یا یوزر نیم کانال را بدون @ ارسال نمایید')
+        return 
+    
+
+    if ADD_NEW_CHANNEL['ch_id_stat']==True :
+        ADD_NEW_CHANNEL['ch_id_stat'] = False 
+        if message.text.isdigit() or message.text.startswith('-'):
+            try :
+                channels_ = channels.objects.create(channel_name = ADD_NEW_CHANNEL['ch_name'] , channel_id = message.text , ch_status =0)
+            except Exception as error_adding_chid :
+                print(f'error during adding new ch \n error msg : {error_adding_chid}')
+            bot.send_message(message.chat.id , 'چنل جدید با موفقیت اضافه شد' , reply_markup=botkb.manage_channels())
+        else:
+            try :
+                channels_ = channels.objects.create(channel_name = ADD_NEW_CHANNEL['ch_name'] , channel_url = f"@{message.text}" , ch_status =0)
+            except Exception as error_adding_churl :
+                print(f'error during adding new ch \n error msg : {error_adding_churl}')
+            bot.send_message(message.chat.id , 'چنل جدید با موفقیت اضافه شد' , reply_markup=botkb.manage_channels())
+        return
+
+
+
+
+
+#----------------------------------------------------------------------------------------------------------------------------#
+# -------------------------user management-----------------------------------------------------------------------------------#
+# ---------------------------------------------------------------------------------------------------------------------------#
+
+
+
+
+
+USER_INCREASE_DECREASE_CASH = {'get_username' : False,'operating': False, 'user_id' : int }
+
+
+
+
+
+@bot.callback_query_handler(func= lambda call : call.data in ['users_management' , 'back_from_user_management', 'increase_decrease_cash' , 'back_from_increase_decrease_cash'])
+def manage_users(call):
+
+    if call.data =='users_management':
+        admins_ = admins.objects.get(user_id = int(call.from_user.id))
+        if (admins_.acc_panels == 1 and admins_.acc_users) or admins_.is_owner ==1:
+            Text_1 = 'به قسمت مدیریت یوزر ها خوش امدید'
+            bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_users())
+        else :
+            bot.send_message(call.message.chat.id , 'شما اجازه دسترسی به این قسمت را ندارید')
+
+
+
+    if call.data =='back_from_user_management':
+        Text_back = 'به مدیریت ربات خوش امدید'
+        bot.edit_message_text(Text_back , call.message.chat.id , call.message.message_id , reply_markup=BotKb.management_menu_in_admin_side(call.from_user.id))
+
+    if call.data == 'increase_decrease_cash':
+        USER_INCREASE_DECREASE_CASH['get_username'] = True
+        bot.send_message(call.message.chat.id , 'ایدی عددی یوزر مورد نظر را وارد کنید\n\n TO CANCEL : /cancel')
+
+    if call.data == 'back_from_increase_decrease_cash':
+        USER_INCREASE_DECREASE_CASH['operating'] = False
+        USER_INCREASE_DECREASE_CASH['get_username'] = False
+        USER_INCREASE_DECREASE_CASH['user_id'] = int
+        OPERATION_INCREASE_DECREASE.update([None for i in OPERATION_INCREASE_DECREASE.keys()])
+        bot.edit_message_text('به قسمت مدیریت یوزر ها خوش امدید' , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_users())
+
+
+
+
+
+
+
+
+
+
+
+
+@bot.message_handler(func= lambda message : USER_INCREASE_DECREASE_CASH['get_username'] == True or OPERATION_INCREASE_DECREASE['amount_wish'] ==True)
+def handle_user_increase_decrease_cash(message):
+    if USER_INCREASE_DECREASE_CASH['get_username'] == True:
+        if message.text == '/cancel' or message.text == '/cancel'.upper():
+            USER_INCREASE_DECREASE_CASH['get_username'] = False
+            bot.send_message(message.chat.id , 'عملیات لغو شد' , reply_markup=BotKb.manage_users())
+        else:
+            if message.text.isdigit():
+                try : 
+                    users_ = users.objects.get(user_id = int(message.text))
+                    if users_:
+                        USER_INCREASE_DECREASE_CASH['get_username'] = False
+                        USER_INCREASE_DECREASE_CASH['user_id'] = int(message.text)
+                        USER_INCREASE_DECREASE_CASH['operating'] = True
+                        Text_1 = f'''
+عمل انتخابی خود را انتخاب نمایید 
+
+┐👤: {str(users_.user_id)}
+ ┊─  نام کاربری :‌{str(users_.first_name) + str(users_.last_name)}
+ ┊─  یوزر نیم : @{str(users_.username)}
+ ┊─ موجودی کیف پول : {str(users_.user_wallet)}
+.
+'''
+                        bot.send_message( message.chat.id , Text_1 , reply_markup=BotKb.increase_or_decrease(user_id=int(message.from_user.id)))
+                except users.DoesNotExist:
+                    USER_INCREASE_DECREASE_CASH['get_username'] = False
+                    bot.send_message(message.chat.id , 'یوزری با این ایدی یافت نشد')
+            else:
+                bot.send_message(message.chat.id , 'ایدی وارد شده باید به صورت عدد باشد')
+        return
+
+
+
+
+    if OPERATION_INCREASE_DECREASE['amount_wish'] ==True:
+        if message.text.isdigit():
+            OPERATION_INCREASE_DECREASE['amount_wish'] = False
+            OPERATION_INCREASE_DECREASE['current_cash'] = int(message.text)
+            users_2 = users.objects.get(user_id = USER_INCREASE_DECREASE_CASH['user_id'])
+            Text_2 = f'''
+عمل انتخابی خود را انتخاب نمایید 
+
+┐👤: {str(users_2.user_id)}
+ ┊─  نام کاربری :‌{str(users_2.first_name) + str(users_2.last_name)}
+ ┊─  یوزر نیم : @{str(users_2.username)}
+ ┊─ موجودی کیف پول : {str(users_2.user_wallet)}
+.
+'''
+            if OPERATION_INCREASE_DECREASE['operator'] == '➖':
+                op = '➖'
+            elif OPERATION_INCREASE_DECREASE['operator'] == "➕":
+                op = "➕"
+            else :
+                op = None
+            bot.send_message(message.chat.id , Text_2 , reply_markup=BotKb.increase_or_decrease(user_id= users_2.user_id ,current_cash= int(message.text) , operator=op ))
+        else:
+            bot.send_message(message.chat.id , 'ایدی وارد شده باید به صورت عدد باشد')
+        return
+
+
+
+
+
+
+
+OPERATION_INCREASE_DECREASE  = {'operator': None , 'amount' : None , 'current_cash': None ,
+                                'verfiy_message': None , 'amount_wish': False }
+
+
+
+
+
+
+@bot.callback_query_handler(func= lambda call : call.data in ['operator_mines' , 'operator_plus' , 'decrease_cash_to','increase_cash_to' , 'back_from_step_increase_decrease' , 'wish_amount'] or call.data.startswith(('amount_decrease' , 'amount_increase','verify_inde_')))
+def increase_decrease_cahs(call):
+    Text_0 = 'عمل انتخابی خود را انتخاب نمایید' 
+    User_id = USER_INCREASE_DECREASE_CASH['user_id'] 
+    users_ = users.objects.get(user_id = int(User_id))
+    Text_00 = f'''
+عمل انتخابی خود را انتخاب نمایید 
+
+┐👤: {str(users_.user_id)}
+ ┊─  نام کاربری :‌{str(users_.first_name) + str(users_.last_name)}
+ ┊─  یوزر نیم : @{str(users_.username)}
+ ┊─ موجودی کیف پول : {str(users_.user_wallet)}
+.
+ '''
+
+
+    if call.data =='operator_mines':
+        OPERATION_INCREASE_DECREASE['operator'] = '➖'
+        op_mines = OPERATION_INCREASE_DECREASE['operator'] if OPERATION_INCREASE_DECREASE['operator'] is not None else '➖'
+        if OPERATION_INCREASE_DECREASE['amount'] is not None:
+            amount = OPERATION_INCREASE_DECREASE['amount']
+        else :
+            amount = 1
+        current_cash = OPERATION_INCREASE_DECREASE['current_cash'] if OPERATION_INCREASE_DECREASE['current_cash'] is not None else 5000
+        bot.edit_message_text(Text_00 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.increase_or_decrease(user_id=int(User_id),amount_add= int(amount), operator=op_mines , current_cash = current_cash))
+
+
+
+
+
+    if call.data =='operator_plus':
+        OPERATION_INCREASE_DECREASE['operator'] = "➕"
+        op_plus = OPERATION_INCREASE_DECREASE['operator'] if OPERATION_INCREASE_DECREASE['operator'] is not None else "➕"
+        if OPERATION_INCREASE_DECREASE['amount'] is not None:
+            amount = OPERATION_INCREASE_DECREASE['amount']
+        else :
+            amount = 1
+        current_cash = OPERATION_INCREASE_DECREASE['current_cash'] if OPERATION_INCREASE_DECREASE['current_cash'] is not None else 5000
+        bot.edit_message_text(Text_00 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.increase_or_decrease(user_id=int(User_id),amount_add= int(amount), operator=op_plus, current_cash = current_cash))
+
+
+
+
+
+    if call.data.startswith('amount_decrease'):
+        call_data = call.data.split("_")
+        OPERATION_INCREASE_DECREASE['amount'] = int(call_data[-1])
+        op = OPERATION_INCREASE_DECREASE['operator'] if OPERATION_INCREASE_DECREASE['operator'] is not None else None
+        amount = OPERATION_INCREASE_DECREASE['amount'] if OPERATION_INCREASE_DECREASE['amount'] is not None else int(call_data[-1])
+        current_cash = OPERATION_INCREASE_DECREASE['current_cash'] if OPERATION_INCREASE_DECREASE['current_cash'] is not None else 5000
+        bot.edit_message_text(Text_00 , call.message.chat.id , call.message.message_id , reply_markup= BotKb.increase_or_decrease(user_id=int(User_id) , amount_add=int(amount)  , operator=op, current_cash = current_cash))
+
+
+
+
+
+    if call.data.startswith('amount_increase'):
+        call_data = call.data.split("_")
+        OPERATION_INCREASE_DECREASE['amount'] = int(call_data[-1])
+        op = OPERATION_INCREASE_DECREASE['operator'] if OPERATION_INCREASE_DECREASE['operator'] is not None else None
+        amount = OPERATION_INCREASE_DECREASE['amount'] if OPERATION_INCREASE_DECREASE['amount'] is not None else int(call_data[-1])
+        current_cash = OPERATION_INCREASE_DECREASE['current_cash'] if OPERATION_INCREASE_DECREASE['current_cash'] is not None else 5000
+        bot.edit_message_text(Text_00 , call.message.chat.id , call.message.message_id , reply_markup= BotKb.increase_or_decrease(user_id=int(User_id) , amount_add= int(amount) , operator=op, current_cash = current_cash))
+
+
+
+
+
+
+
+
+    if call.data.startswith('verify_inde_') :
+        if USER_INCREASE_DECREASE_CASH['operating'] == True : 
+            call_data = call.data.split('_')
+            OPERATION_INCREASE_DECREASE['verfiy_message'] = call.data
+            Text_0_2 = f"""
+    ┊─ مبلغ : {str(format(call_data[2]))} تومان
+به کیف پول شما اضافه شد 
+.
+"""
+            Text_0_3 = f"""
+    ┊─ مبلغ : {str(format(call_data[2]))} تومان
+به کیف پول شما کسر شد 
+.
+"""
+            if call_data[3] == 'None':
+                keyboard = InlineKeyboardMarkup()
+                keyboard.add(InlineKeyboardButton(text='اضافه کردن وجه', callback_data='increase_cash_to') , InlineKeyboardButton(text='کم کردن وجه' , callback_data='decrease_cash_to') , InlineKeyboardButton(text='بازگشت', callback_data='back_from_step_increase_decrease'))
+                bot.send_message(call.message.chat.id , 'عملیات را انتخاب نمایید' , reply_markup=keyboard)
+            
+
+            if call_data[3] =='plus':
+                USER_INCREASE_DECREASE_CASH['operating'] = False
+                try :
+                    user_ = users.objects.get(user_id = int(call_data[4]))
+                    new_wallet = user_.user_wallet + decimal.Decimal(call_data[2])
+                    user_.user_wallet = new_wallet
+                    user_.save()
+                    bot.send_message(call.message.chat.id , 'مبلغ به کیف پول یوزر اضافه شد')
+                    bot.send_message(int(call_data[-1]) , Text_0_2)
+                except Exception as error_increase_cash :
+                    print(f'error : {error_increase_cash}')
+
+
+            if call_data[3] == 'mines':
+                USER_INCREASE_DECREASE_CASH['operating'] = False
+                try :
+                    user_ = users.objects.get(user_id = int(call_data[4]))
+                    if user_.user_wallet < 0 :
+                        bot.send_message(call.message.chat.id , ' موجودی کیف پول مقصد صفر تومان است')
+                    elif user_.user_wallet <= int(call_data[2]) :
+                        user_.user_wallet = 0 
+                        user_.save()
+                        bot.send_message(call.message.chat.id , 'موجودی کیف پول مقصد صفر خواهد شد')
+                    else:
+                        new_wallet = user_.user_wallet - decimal.Decimal(call_data[2])
+                        user_.user_wallet = new_wallet
+                        user_.save()
+                        bot.send_message(call.message.chat.id , 'مبلغ از کیف پول یوزر کسر شد')
+                        bot.send_message(int(call_data[-1]) , Text_0_3)
+
+                except Exception as error_decrease_cash :
+                    print(f'error : {error_decrease_cash}')
+        else:
+            bot.send_message(call.message.chat.id , 'انجام این عملیات برای این یوزر امکان پذیر نمیباشد')
+
+
+
+    if call.data =='increase_cash_to':
+        Text_0_4 = f"""
+    ┊─ مبلغ : {str(format(call_data[2]))} تومان
+به کیف پول شما اضافه شد 
+.
+"""
+        USER_INCREASE_DECREASE_CASH['operating'] = False
+        call_data = OPERATION_INCREASE_DECREASE['verfiy_message'].split("_")
+        try :
+            users_ = users.objects.get(user_id = int(call_data[4]))
+            new_wallet = users_.user_wallet + decimal.Decimal(call_data[2])
+            users_.user_wallet = new_wallet
+            users_.save()
+            bot.send_message(call.message.chat.id , 'مبلغ به کیف پول یوزر اضافه شد')
+            bot.send_message(int(call_data[-1]) , Text_0_4)
+
+        except Exception as error_next_increase:
+            print(f'error : {error_next_increase}')
+
+
+
+    if call.data =='decrease_cash_to':
+        Text_0_5 = f"""
+    ┊─ مبلغ : {str(format(call_data[2]))} تومان
+به کیف پول شما کسر شد 
+.
+"""
+        USER_INCREASE_DECREASE_CASH['operating'] = False
+        call_data = OPERATION_INCREASE_DECREASE['verfiy_message'].split("_")
+        try :
+            users_ = users.objects.get(user_id = int(call_data[4]))
+            new_wallet = users_.user_wallet - decimal.Decimal(call_data[2])
+            users_.user_wallet = new_wallet
+            users_.save()
+            bot.send_message(call.message.chat.id , 'مبلغ از کیف پول یوزر کسر شد')
+            bot.send_message(int(call_data[-1]) , Text_0_5)
+        except Exception as error_next_decrease:
+            print(f'error : {error_next_decrease}')
+
+
+
+
+    if call.data =='back_from_step_increase_decrease':
+        USER_INCREASE_DECREASE_CASH['operating'] = False
+        USER_INCREASE_DECREASE_CASH['get_username'] = False
+        USER_INCREASE_DECREASE_CASH['user_id'] = int
+        OPERATION_INCREASE_DECREASE.update([None for i in OPERATION_INCREASE_DECREASE.keys()])
+        bot.edit_message_text('به قسمت مدیریت یوزر ها خوش امدید' , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_users())
+
+
+
+
+
+    if call.data=='wish_amount':
+        OPERATION_INCREASE_DECREASE['amount_wish'] = True
+        bot.send_message(call.message.chat.id , 'مقدار دل خواه را وارد نمایید')
+
+
 
 
 

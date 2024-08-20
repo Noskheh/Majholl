@@ -1,0 +1,18 @@
+{% extends  'main.html' %}
+
+
+{% block content %}
+    <a class="back_products" href="/products">بازگشت</a>
+    <h1>{{pro_detail.product_name}}</h1>
+
+    <p>{{pro_detail.data_limit}} :حجم محصول</p>
+    <p>{{pro_detail.expire_date}} :زمان محصول</p>
+    <p>{{pro_detail.pro_cost}} :قیمت محصول</p>
+    <button>انتخاب </button>
+
+
+{% endblock %}
+
+
+
+

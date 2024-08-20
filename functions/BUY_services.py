@@ -183,10 +183,11 @@ def pay_with_wallet( call , bot , product_dict , panel_loaded ):
     panel_ = v2panel.objects.get(id = info['panel_number'])
     product_price = info['pro_cost']
 
-    if user_.user_wallet < product_price :
-        bot.send_message(call.message.chat.id , '✣موجودی حساب شما کافی نمیباشد ⚠️\n ┊─ ابتدا موجودی خود را افزایش دهید و مجدد اقدام فرمایید .')
-
-    elif user_.user_wallet >= product_price :
+    if user_.user_wallet < decimal.Decimal(product_price) :
+        bot.send_message(call.message.chat.id , '✣موجودی حساب شما کافی نمیباشد ⚠️\n ┊─ ابتدا موجودی خود را افزایش دهید و مجدد اقدام فرمایید .\n برای اضافه کردن :/add_money')
+        return 'insufficent'
+    
+    if user_.user_wallet >= decimal.Decimal(product_price) :
         new_wallet = (user_.user_wallet) - decimal.Decimal(product_price)
         try :
             user_.user_wallet = new_wallet
@@ -225,10 +226,10 @@ def tamdid_pay_with_wallet(call , bot , product_dict , panel_loaded):
     panel_ = v2panel.objects.get(id = int(info['panel_number']))
     product_price = info['pro_cost']
 
-    if user_.user_wallet < product_price :
-        bot.send_message(call.message.chat.id , '✣موجودی حساب شما کافی نمیباشد ⚠️\n ┊─ ابتدا موجودی خود را افزایش دهید و مجدد اقدام فرمایید .')
-
-    elif user_.user_wallet >= product_price :
+    if user_.user_wallet < decimal.Decimal(product_price) :
+        bot.send_message(call.message.chat.id , '✣موجودی حساب شما کافی نمیباشد ⚠️\n ┊─ ابتدا موجودی خود را افزایش دهید و مجدد اقدام فرمایید .\n برای اضافه کردن :/add_money')
+        return 'insufficent'
+    if user_.user_wallet >= decimal.Decimal(product_price) :
         new_wallet = (user_.user_wallet) - decimal.Decimal(product_price)
         try :
             user_.user_wallet = new_wallet
@@ -325,7 +326,6 @@ def tamdid_pay_with_card(call , bot , product_dict , user_fish ):
 
 def how_to_send(request_ , panel_id , BOT , call_userid):
     panel_ = v2panel.objects.get(id= panel_id)
-
     if panel_.send_qrcode_mode == 1 : #subscription QRcode
         sub_link = request_['subscription_url']
         

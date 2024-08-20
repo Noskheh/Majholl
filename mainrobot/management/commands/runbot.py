@@ -25,8 +25,8 @@ class Command(BaseCommand):
             if  is_owner in ['true' , 'false' , 't' , 'f', 'True', 'False', 'yes','yes' ,'No','no']:
                 owner = 1 
                 
-            admins.objects.create(user_id = get_user_id , is_admin = owner , is_owner = owner , password=get_user_passwd , admin_name ='Owner')
-            botsettings.objects.create(wallet_pay = 0 , kartbkart_pay=0, forcechjoin=0)
+            admins.objects.create(user_id = get_user_id , is_admin = owner , is_owner = owner , password=get_user_passwd , admin_name ='Owner' , acc_botmanagment=0, acc_panels=0, acc_products=0, acc_admins=0 , acc_users=0)
+            botsettings.objects.create(wallet_pay = 0, kartbkart_pay=0, forcechjoin=0, moneyusrtousr=0)
             self.stdout.write(self.style.SUCCESS('Successfully !! Owner bot added to db'))
             write_token(get_token_bot)
    
@@ -39,8 +39,8 @@ class Command(BaseCommand):
             main.bot.token = get_token_bot
             main.bot.send_message(get_user_id, 'بات شما با موفقیت نصب شد ✅ \n برای شروع دستور : /start را بفرستید')
             self.stdout.write('bot is running' , self.style.HTTP_SUCCESS )
-            #main.bot.infinity_polling()
-            main.bot.polling(non_stop=True)
+            main.bot.infinity_polling()
+            #main.bot.polling(non_stop=True)
 
 
         else :
@@ -59,15 +59,15 @@ class Command(BaseCommand):
             clear_console()
             
             self.stdout.write('--! Bot is Running !--' , self.style.HTTP_SUCCESS ,)   
-            #main.bot.infinity_polling()
-            main.bot.polling(non_stop=True)
+            main.bot.infinity_polling()
+            #main.bot.polling(non_stop=True)
 
 
 
 
 #/ write token
 def write_token(token):
-    with open('bottoken.py' , 'w+') as f:
+    with open('BOTTOKEN.py' , 'w+') as f:
             f.write(f'TOKEN=["{token}"]')
             f.close()
 

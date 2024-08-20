@@ -1,0 +1,30 @@
+{% extends  'main.html' %}
+
+
+
+{% block content %}
+<section>
+
+    <section ><h2>محصولات </h2></section>
+
+    <section>
+        <div class="products">
+            <div class="product">
+                {% for i in products %}
+                <div class="h3"><h3>{{ i.product_name }}</h3></div>    
+
+                    <div class="p1"><p>حجم محصول: {{ i.data_limit }}</p></div>
+                    <div class="p2"><p>زمان محصول: {{ i.expire_date }}</p></div>
+                    <div class="p3"><p>قیمت محصول: {{ i.pro_cost }}</p></div>
+
+                <hr>
+                <div class="btn"><a class="addtocart" href="product_details/{{ i.id }}"> مشاهده محصول</a></div>
+            </div>
+        </div>
+    </section>
+
+</section>
+    {% endfor %}
+
+{% endblock %}
+

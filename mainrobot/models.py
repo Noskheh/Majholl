@@ -25,7 +25,11 @@ class admins(models.Model):
     is_admin = models.BooleanField(default=False)
     is_owner = models.BooleanField(default=False)
     password = models.CharField(max_length=128 , null=True , blank=True)
-
+    acc_panels = models.BooleanField(default=False)
+    acc_products = models.BooleanField(default=False)
+    acc_botmanagment = models.BooleanField(default=False)
+    acc_admins = models.BooleanField(default=False)
+    acc_users = models.BooleanField(default=False)
     def __str__(self):
         return f'User {self.user_id}: Admin={self.is_admin}, Owner={self.is_owner}'
 

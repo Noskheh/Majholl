@@ -1,5 +1,5 @@
 from mainrobot.models import v2panel , inovices , users
-from datetime import datetime , timedelta
+from datetime import datetime , timedelta 
 
 
 
@@ -16,8 +16,6 @@ def check_time_passed(inovice_id : int):
          return 'time_passed'
     else :
          return 'have-time'
-
-
 
 
 
