@@ -1,15 +1,34 @@
 {% extends  'main.html' %}
+{% load static %}
+
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'product.css' %}">
+{% endblock  %}
 
 
 {% block content %}
-    <a class="back_products" href="/products">بازگشت</a>
-    <h1>{{pro_detail.product_name}}</h1>
+<section>
 
-    <p>{{pro_detail.data_limit}} :حجم محصول</p>
-    <p>{{pro_detail.expire_date}} :زمان محصول</p>
-    <p>{{pro_detail.pro_cost}} :قیمت محصول</p>
-    <button>انتخاب </button>
+    <div class="div-outer">
+        
+        <div class="h1">
+            <h1>{{pro_detail.product_name}}</h1>
+        </div>
 
+        <div class="div-inner1">
+            <p class="p1">حجم محصول :‌{{pro_detail.data_limit}} گیگ</p>
+            <p class="p2"> زمان محصول : {{pro_detail.expire_date}} روز</p>
+            <p class="p3"> قیمت محصول : {{pro_detail.pro_cost}} تومان</p>
+        </div> 
+
+        <div class="div-inner2">
+            <button class="btn"><p class="pbtn"> انتخاب </p></button>
+            <a class="back_products" href="/products"> بازگشت </a>
+        </div>
+        
+    </div>
+</section>
 
 {% endblock %}
 

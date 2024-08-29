@@ -1,6 +1,7 @@
 from mainrobot.models import v2panel , products
 from keybuttons import BotkeyBoard as BotKb
 import random , string , time, re
+import panelsapi
 #this is functions that managing panels
 
 
@@ -384,6 +385,37 @@ def check_capcity(panel_id = int ):
                     panels_.save()
     except Exception as error:
         print(f'An error occurred while checking capacity: {error}')
+
+
+
+
+
+
+def panel_state (panel_id = int):
+    panel_state = panelsapi.marzban(panel_id= int(panel_id)).system_info()
+    total_mem = panel_state['mem_total'] / (1024 * 1024 * 1024)
+    used_mem = panel_state['mem_used'] / (1024 * 1024 * 1024)
+    incom = panel_state['incoming_bandwidth'] / (1024 * 1024 * 1024 * 1024)
+    outcom = panel_state['outgoing_bandwidth'] / (1024 * 1024 * 1024 * 1024)
+    panel_state_txt = f"""
+─👥 کل کاربران : {panel_state['total_user']}
+─ 🙌🏻کاربران فعال :‌{panel_state['users_active']}
+
+  ┊─ 🔗هسته های پردازشگر : {panel_state['cpu_cores']} عدد
+  ┊─ 🧮پردازشگر مصرفی : {panel_state['cpu_usage']} %
+
+  ┊─ 📊کل حافظه : {round(total_mem , 2)} GB
+  ┊─ 📈حافظه مصرفی : {round(used_mem , 2)} MB
+
+  ┊─ ⬇️پهنای باند ورودی : {round(incom , 4)} TB
+  ┊─ ⬆️پهنای باند خروجی :‌ {round(outcom , 4)} TB
+
+┘ - 📍ورژن : ‌{panel_state['version']}
+
+.        
+        """
+    return panel_state_txt
+
 
 
 

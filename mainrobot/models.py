@@ -11,6 +11,11 @@ class users(models.Model):
     user_id = models.BigIntegerField(unique=True)
     username = models.CharField(max_length=256 , null=True)
     user_wallet = models.DecimalField(max_digits=18, decimal_places=2)
+    
+    block_reason = models.CharField(max_length=126 , blank=True , null=True)
+    block_status = models.BooleanField(default=0)
+
+    phone_number = models.CharField(max_length=54 , blank=True , null=True)
 
     class Meta:
         db_table = 'v2_users'
@@ -153,8 +158,12 @@ class botsettings(models.Model):
     kartbkart_pay = models.SmallIntegerField(default= 0 , null=False)
     forcechjoin = models.SmallIntegerField(default=0 , null=False)
     moneyusrtousr = models.SmallIntegerField(default=0 , null=False)
+    irnumber = models.SmallIntegerField(default=0 ,null=False)
+    
     class Meta:
         db_table = 'v2_botsettings'
+
+
 
 
 class channels(models.Model):

@@ -169,3 +169,14 @@ class marzban:
             return json.loads(info_by_token.content)
         else :
             return False
+
+
+    #system-info / 08.28 
+    def system_info(self):
+        panel_url = self.panel_url + f'/api/system'
+        get_header = marzban.get_token_acces(self)
+        system_by_token = requests.get(panel_url , headers=get_header)
+        if system_by_token.status_code == 200:
+            return json.loads(system_by_token.content)
+        else:
+            False

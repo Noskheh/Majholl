@@ -26,7 +26,7 @@ class Command(BaseCommand):
                 owner = 1 
                 
             admins.objects.create(user_id = get_user_id , is_admin = owner , is_owner = owner , password=get_user_passwd , admin_name ='Owner' , acc_botmanagment=0, acc_panels=0, acc_products=0, acc_admins=0 , acc_users=0)
-            botsettings.objects.create(wallet_pay = 0, kartbkart_pay=0, forcechjoin=0, moneyusrtousr=0)
+            botsettings.objects.create(wallet_pay = 0, kartbkart_pay=0, forcechjoin=0, moneyusrtousr=0, irnumber=0)
             self.stdout.write(self.style.SUCCESS('Successfully !! Owner bot added to db'))
             write_token(get_token_bot)
    

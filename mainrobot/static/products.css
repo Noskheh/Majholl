@@ -1,0 +1,134 @@
+section {
+    background-color: #fff2be;
+}
+
+hr.sep-1 {
+    width: 100%;
+    height: 1px;
+    margin: 0px 0px 10px;
+    border: none;
+    border-radius: 10px;
+    background-color: black;
+    opacity: 20%;
+}
+
+section.inner-section-1 {
+    display: block;
+    width: 100%;
+}
+
+section.inner-section-1 h2 {
+    text-align: center;
+    font-size: 28px;
+}
+
+
+section.inner-section-2 {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin: 20px 0px 20px;
+    padding: 20px 0px 20px;
+}
+
+
+div.products {
+    display: flex;
+    justify-content: center;
+    flex-direction: row-reverse;
+    width: 50%;
+    min-width: 200px;
+}
+
+div.product {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 350px;
+    min-width: 250px;
+    margin: 25px;
+    border: solid 1px  black;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    position: relative;
+}
+
+div.product:hover{
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+div.product .h3{
+    min-height: 25px;
+    width: 100%;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: black;
+    color: white;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    direction: rtl;
+}
+
+div.product .p1 , 
+div.product .p2 ,
+div.product .p3{
+    width: 100%;
+    padding: 0px;
+    margin: 0px; 
+    display: flex;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+
+
+hr.sep-2 {
+    width: 80%;
+    height: 1px;
+    border: none;
+    border-radius: 10px;
+    background-color: black;
+    opacity: 20%;
+}
+
+
+div.btn {
+    width: 80%;
+    padding: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid black;
+    border-radius: 15px;
+    transition-duration: 0.5s;
+    transition-property: background-color;
+}
+
+div.btn:hover {
+    background-color: black;
+    
+
+}
+
+div.btn a {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: black;
+    font-size: 18px;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+div.btn a:hover{
+    color: white;
+}

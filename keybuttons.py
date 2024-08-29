@@ -120,11 +120,22 @@ class BotkeyBoard:
         keyboard.add(back_button)   
         return keyboard
 
+
+
+
     @staticmethod 
     def manage_users():
         keyboard = InlineKeyboardMarkup()
+        
+        botsettings_ = botsettings.objects.all()
+        for i in botsettings_:
+            irnumber = i.irnumber
+        ir_number = lambda txt : '✅' if txt == 1 else '❌'
 
-        buttons_raw = [[('➕افزایش / ➖کاهش موجودی کاربر' , 'increase_decrease_cash')],]
+        buttons_raw = [ [(ir_number(irnumber) , 'ir_number'),('احراز هویت با شماره' , 'ir_number')],
+                        [('⬇️⬆️ موجودی کاربر ' , 'increase_decrease_cash'), ('🔴🟢 انسداد کاربر ', 'block_unblock_user')],
+                        ]
+
 
         for row in buttons_raw:
             buttons_list = []
@@ -150,7 +161,7 @@ class BotkeyBoard:
             user_joined = bot.get_chat_member(i.channel_url or i.channel_id  , Userid).status
             if user_joined == 'left':
                 if i.ch_status == 1 : 
-                    channel_url = bot.get_chat(i.channel_id or i.channel_url).invite_link
+                    channel_url = bot.get_chat(str(i.channel_id) or str(i.channel_url)).invite_link
                     button = InlineKeyboardButton(i.channel_name , callback_data=channel_url  , url=channel_url)
                     channel_list.append(button)
 
@@ -405,6 +416,15 @@ class BotkeyBoard:
         
         return keyboard
     
+
+    @staticmethod 
+    def updating_panel (panel_id=int):
+        keyboard = InlineKeyboardMarkup()
+        button = InlineKeyboardButton('بروزرسانی 🔄' , callback_data=f'updating_panel_{panel_id}')
+        button_back = InlineKeyboardButton('بازگشت' , callback_data='back_from_panel_static')
+        keyboard.add(button , button_back , row_width=1)
+        return keyboard
+
 
 
 
@@ -882,20 +902,6 @@ class BotkeyBoard:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # ------------------------- Wallet Profile ----------------------------------------------------------------------------------------
     @staticmethod 
     def wallet_profile(user_id , info  = False):
@@ -955,15 +961,6 @@ class BotkeyBoard:
         
         return keyboard  
     
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1106,24 +1103,6 @@ class BotkeyBoard:
         back_button= InlineKeyboardButton('بازگشت به منوی قبلی↪️' , callback_data='back_from_admin_access')
         keyboard.add(back_button)
         return keyboard
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1316,9 +1295,9 @@ class BotkeyBoard:
     @staticmethod 
     def increase_or_decrease(amount_add = 1, user_id = None , current_cash = 5000 , operator = None ,):
         keyboard = InlineKeyboardMarkup()
-        users_ = users.objects.get(user_id = user_id)
-
-        if amount_add  == 0:
+        if amount_add == None :
+            amount_add =1 
+        elif amount_add  == 0:
             current_cash = current_cash * amount_add
         elif amount_add > 0 :
             current_cash = current_cash *  amount_add
@@ -1329,9 +1308,9 @@ class BotkeyBoard:
 
         raw_buttons = [[(format(current_cash , ',') , 'current_cash')], 
                        [('➖' , 'operator_mines') , (str(operator) , 'operator'), ('➕' , 'operator_plus')],
-                       [(f'{str(5000)} کاهش' , f'amount_decrease_{str(amount_add - 1 )}') , (f'{str(5000)}افزایش' , f'amount_increase_{str(amount_add + 1)}')],
-                       [('تایید عملیات ' , f'verify_inde_{current_cash}_{operator_verify}_{user_id}')],
-                       [('مبلغ دلخواه' , 'wish_amount')],
+                       [(f'{str(5000)} کاهش' , f'amount_decrease_{str(amount_add - 1 )}') , (f'{str(5000)} افزایش' , f'amount_increase_{str(amount_add + 1)}')],
+                       [('تایید عملیات ✅' , f'verify_inde_{current_cash}_{operator_verify}_{user_id}')],
+                       [('مبلغ دلخواه🔖' , 'wish_amount')],
                        [('بازگشت ' , 'back_from_increase_decrease_cash')],]
         
         for row in raw_buttons:
@@ -1340,5 +1319,71 @@ class BotkeyBoard:
                 button = InlineKeyboardButton(text=text , callback_data=data)
                 buttons_list.append(button)
             keyboard.add(*buttons_list)
+
+        return keyboard
+    
+
+
+# ------------------------- bot-static-section ----------------------------------------------------------------------------------------
+    @staticmethod
+    def bot_static(users = None, products = None, panels =None, inovices=None, payments=None):
+        keyboard = InlineKeyboardMarkup()
+        users_choose = '👥 -کاربران ' if users is None else '👥- کاربران☑️ '
+        products_choose = '🛍 -محصولات ' if products is None else '🛍- محصولات☑️'
+        panels_choose = '🎛 -پنل‌ها' if panels is None else '🎛- پنل‌ها☑️'
+        inovices_choose = '📑-فاکتورها' if inovices is None else '📑- فاکتورها☑️'
+        payments_choose = '💰- پرداخت‌ها ' if payments is None else "💰- پرداخت‌ها☑️"
+        raw_buttons = [
+                        [   
+                            (panels_choose, 'panels_static'),
+                            (products_choose , 'products_static'),
+                            (users_choose, 'users_static'),
+                            (inovices_choose, 'inovices_static'),
+                            (payments_choose, 'payments_static'),
+                            #('کارت ها ', 'karts_static'),
+                        ],
+                        [
+                            ('بازگشت به منوی قبلی↪️', 'back_from_bot_statics')
+                        ]
+                    ]
+        
+        for row in raw_buttons:
+            buttons_list = []
+            for text , data in row :
+                button = InlineKeyboardButton(text=text , callback_data=data)
+                buttons_list.append(button)
+            keyboard.add(*buttons_list)
+        return keyboard
+    
+
+# ------------------------- block-unblock-section ----------------------------------------------------------------------------------------
+    @staticmethod
+    def block_unblock(user_id = None , block = None , unblock = None):
+        keyboard = InlineKeyboardMarkup()
+        user_id = str(user_id)
+        users_ =users.objects.get(user_id=user_id)
+
+        if block is not None :
+            block_text = '✅مسدود کردن'
+        else :
+            block_text = 'مسدود کردن'
+        
+        if unblock is not None:
+            unblock_text = '✅ رفع مسدودی'
+        else:
+            unblock_text = 'رفع مسدودی'
+
+        block_unblock_txt = 'مسدود' if users_.block_status == 1 else 'عدم مسدودی'
+        raw_button = [[(f'وضعیت یوزر :‌ {block_unblock_txt}' , f'userid_{user_id}')],
+                        [(block_text , f'block_user_{user_id}'), (unblock_text , f'unblock_user_{user_id}')],
+                        [('📍تایید و ارسال پیام به یوزر', f'verify_sendmsg_{user_id}')],
+                        [('بازگشت ' , 'back_from_block_unblock')],]
+        
+        for raw in raw_button:
+            button_list = []
+            for text , data in raw:
+                button = InlineKeyboardButton(text=text , callback_data=data)
+                button_list.append(button)
+            keyboard.add(*button_list)
 
         return keyboard
