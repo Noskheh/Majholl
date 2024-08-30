@@ -9,5 +9,5 @@ __pycache__/
 samples.txt
 general_guide.txt
 
-
+mainrobot/migrations/
 datas/*

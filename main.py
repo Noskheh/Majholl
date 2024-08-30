@@ -2577,6 +2577,7 @@ def add_new_admin(message):
 @bot.callback_query_handler(func= lambda call: call.data in ['bot_statics', 'back_from_bot_statics', 'users_static', 'products_static', 'panels_static', 'inovices_static', 'payments_static'])
 def bot_statics(call):
     if call.data =='bot_statics':
+
         user_ = users.objects.all().count()
         inovices_ = inovices.objects.all().count()
         payment_ = payments.objects.filter(payment_stauts = 'accepted').all().count()
@@ -2602,7 +2603,9 @@ def bot_statics(call):
     #- bot static - USERS
     if call.data == 'users_static':
         users_ = users.objects
-        Text_users = f"""
+        if users_.all().exists():
+            
+            Text_users = f"""
 📊- آمار کاربران 
 
 ── تعداد کل کاربران : {users_.all().count()} نفر
@@ -2612,16 +2615,17 @@ def bot_statics(call):
 
 ╣ - کاربران دارای بیشترین موجودی -
 """
-        more_money = [i for i in users_.filter(user_wallet__gt = 25000).order_by('user_wallet').reverse()[:4]]
+            more_money = [i for i in users_.filter(user_wallet__gt = 25000).order_by('user_wallet').reverse()[:4]]
 
-        users_static_list = []
-        users_static_list.append(Text_users)
-        for num , i in enumerate(more_money , 1):
-            user_money = f'\n {num} - 👤 : <code>{str(i.user_id)}</code> : {format(int(i.user_wallet), ",")} تومان'
-            users_static_list.append(user_money)
-        users_static_list.append('\n.')
-        users_static_text = ''.join(users_static_list)
-
+            users_static_list = []
+            users_static_list.append(Text_users)
+            for num , i in enumerate(more_money , 1):
+                user_money = f'\n {num} - 👤 : <code>{str(i.user_id)}</code> : {format(int(i.user_wallet), ",")} تومان'
+                users_static_list.append(user_money)
+            users_static_list.append('\n.')
+            users_static_text = ''.join(users_static_list)
+        else :
+            users_static_text = 'هنوز آماری برای ارائه وجود ندارد'
         bot.edit_message_text(users_static_text ,  call.message.chat.id , call.message.message_id , reply_markup=BotKb.bot_static(users=True))
 
 
@@ -2630,7 +2634,8 @@ def bot_statics(call):
     #- bot static - PRODUCTS
     if call.data =='products_static':
         products_ = products.objects
-        Text_products = f"""
+        if products_.all().exists():
+            Text_products = f"""
 📊- آمار محصولات
 
 ── تعداد کل محصولات : {products_.all().count()} عدد
@@ -2641,18 +2646,19 @@ def bot_statics(call):
 
 ╣ - بیشترین محصولات فروش رفته - 
 """
-        product_static_list = []
-        product_static_list.append(Text_products)
-        
-        payments_accpeted_id = [i.inovice_id_id for i in  payments.objects.filter(payment_stauts= 'accepted' , inovice_id__isnull=False)]
-        product_count_name = inovices.objects.filter(id__in = payments_accpeted_id).values('product_name').annotate(Count('product_name'))[:5]
-        
-        for num,i in enumerate(product_count_name ,1):
-            product_sold = f'\n {num}- 🛍 - <code>{i["product_name"]}</code>'
-            product_static_list.append(product_sold)
-        product_static_list.append('\n.')
-        product_static_text = ''.join(product_static_list)
-
+            product_static_list = []
+            product_static_list.append(Text_products)
+            
+            payments_accpeted_id = [i.inovice_id_id for i in  payments.objects.filter(payment_stauts= 'accepted' , inovice_id__isnull=False)]
+            product_count_name = inovices.objects.filter(id__in = payments_accpeted_id).values('product_name').annotate(Count('product_name'))[:5]
+            
+            for num,i in enumerate(product_count_name ,1):
+                product_sold = f'\n {num}- 🛍 - <code>{i["product_name"]}</code>'
+                product_static_list.append(product_sold)
+            product_static_list.append('\n.')
+            product_static_text = ''.join(product_static_list)
+        else:
+            product_static_text = 'هنوز اطلاعاتی برای ارائه وجود ندارد'
         bot.edit_message_text(product_static_text , call.message.chat.id , call.message.message_id, reply_markup=BotKb.bot_static(products=True))
 
 
@@ -2664,22 +2670,25 @@ def bot_statics(call):
     #- bot static - PANELS
     if call.data =='panels_static':
         panels_ = v2panel.objects
-        Text_panels = f"""
+        if panels_.all().exists():
+            Text_panels = f"""
 📊- آمار پنل ها 
 
 ── تعداد کل پنل ها :‌ {panels_.all().count()}
 ── تعداد اشتراک های هر پنل: 
 """
-        panel_id = [i.id for i in  v2panel.objects.all()]
-        subs_count = subscriptions.objects.filter(panel_id__in = panel_id).values('panel_id').annotate(Count('panel_id'))
-        panels_static_list = []
-        panels_static_list.append(Text_panels)
-        for num ,i in enumerate(subs_count ,1):
-            panel_name = v2panel.objects.get(id = i["panel_id"]).panel_name
-            panel_sub = f'\n {num}- 🎛 {panel_name} :  {i["panel_id__count"]} عدد'
-            panels_static_list.append(panel_sub)
-        panels_static_list.append('\n.')
-        panels_static_text = ''.join(panels_static_list)
+            panel_id = [i.id for i in  v2panel.objects.all()]
+            subs_count = subscriptions.objects.filter(panel_id__in = panel_id).values('panel_id').annotate(Count('panel_id'))
+            panels_static_list = []
+            panels_static_list.append(Text_panels)
+            for num ,i in enumerate(subs_count ,1):
+                panel_name = v2panel.objects.get(id = i["panel_id"]).panel_name
+                panel_sub = f'\n {num}- 🎛 {panel_name} :  {i["panel_id__count"]} عدد'
+                panels_static_list.append(panel_sub)
+            panels_static_list.append('\n.')
+            panels_static_text = ''.join(panels_static_list)
+        else:
+            panels_static_text = 'هنوز اماری برای ارائه وجود ندارید'
         bot.edit_message_text(panels_static_text , call.message.chat.id , call.message.message_id , reply_markup=BotKb.bot_static(panels=True))
 
 
@@ -2689,7 +2698,8 @@ def bot_statics(call):
     #- bot static - INOVICES
     if call.data =='inovices_static':
         inovices_ = inovices.objects
-        Text_inovices = f"""
+        if inovices_.all().exists():
+            Text_inovices = f"""
 📊- آمار فاکتورها
 
 ── تعداد کل فاکتورها صادر شده : {inovices_.aggregate(Count('id'))['id__count']} عدد
@@ -2700,17 +2710,18 @@ def bot_statics(call):
 
 ╣ - بیشترین محصولات فاکتور شده - 
 """
-        inovices_static_list = []
-        inovices_static_list.append(Text_inovices)
+            inovices_static_list = []
+            inovices_static_list.append(Text_inovices)
 
-        most_bought_product = inovices_.values('product_name').annotate(Count('product_name'))
-        for num,i in enumerate(most_bought_product , 1):
-            prod = f'\n {num}- 🔖 : <code>{i["product_name"]}</code> - {i["product_name__count"]} عدد'
-            inovices_static_list.append(prod)
+            most_bought_product = inovices_.values('product_name').annotate(Count('product_name'))
+            for num,i in enumerate(most_bought_product , 1):
+                prod = f'\n {num}- 🔖 : <code>{i["product_name"]}</code> - {i["product_name__count"]} عدد'
+                inovices_static_list.append(prod)
 
-        inovices_static_list.append('\n.')
-        invoices_static_text = ''.join(inovices_static_list)
-
+            inovices_static_list.append('\n.')
+            invoices_static_text = ''.join(inovices_static_list)
+        else :
+            invoices_static_text = 'هنوز آماری برای ارائه وجود ندارد '
         bot.edit_message_text(invoices_static_text, call.message.chat.id, call.message.message_id, reply_markup=BotKb.bot_static(inovices=True))
 
 
@@ -2718,8 +2729,8 @@ def bot_statics(call):
     #- bot static - INOVICES
     if call.data =='payments_static':
         payments_ =payments.objects
-
-        Text_payments = f"""
+        if payments_.all().exists():
+            Text_payments = f"""
 📊- آمار پرداخت‌ها 
 
 ── تعداد کل پرداختی ها  : {payments_.aggregate(Count('id'))['id__count']} عدد
@@ -2729,8 +2740,9 @@ def bot_statics(call):
 
 .
 """
-        bot.edit_message_text(Text_payments, call.message.chat.id, call.message.message_id , reply_markup=BotKb.bot_static(payments=True))
-
+            bot.edit_message_text(Text_payments, call.message.chat.id, call.message.message_id , reply_markup=BotKb.bot_static(payments=True))
+        else:
+            Text_payments = 'هنوز آماری برای ارائه وجود ندارید'
 
     if call.data == 'back_from_bot_statics':
         bot.edit_message_text('به مدیریت ربات خوش امدید', call.message.chat.id , call.message.message_id , reply_markup= BotKb.management_menu_in_admin_side(user_id = call.from_user.id))

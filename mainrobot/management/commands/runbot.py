@@ -57,7 +57,7 @@ class Command(BaseCommand):
                     break 
             time.sleep(2)
             clear_console()
-            
+            """"""
             self.stdout.write('--! Bot is Running !--' , self.style.HTTP_SUCCESS ,)   
             main.bot.infinity_polling()
             #main.bot.polling(non_stop=True)
