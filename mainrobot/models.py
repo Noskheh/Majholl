@@ -6,16 +6,16 @@ from django.utils.timezone import now
 
 
 class users(models.Model):
-    first_name = models.CharField(max_length=256 , null=True)
-    last_name = models.CharField(max_length=256 , null=True)
+    first_name = models.CharField(max_length=256, null=True)
+    last_name = models.CharField(max_length=256, null=True)
     user_id = models.BigIntegerField(unique=True)
-    username = models.CharField(max_length=256 , null=True)
+    username = models.CharField(max_length=256, null=True)
     user_wallet = models.DecimalField(max_digits=18, decimal_places=2)
-    
-    block_reason = models.CharField(max_length=126 , blank=True , null=True)
+    # / -1
+    block_reason = models.CharField(max_length=126, blank=True, null=True)
     block_status = models.BooleanField(default=0)
-
-    phone_number = models.CharField(max_length=54 , blank=True , null=True)
+    # / -2
+    phone_number = models.CharField(max_length=54, blank=True, null=True)
 
     class Meta:
         db_table = 'v2_users'
@@ -35,6 +35,7 @@ class admins(models.Model):
     acc_botmanagment = models.BooleanField(default=False)
     acc_admins = models.BooleanField(default=False)
     acc_users = models.BooleanField(default=False)
+
     def __str__(self):
         return f'User {self.user_id}: Admin={self.is_admin}, Owner={self.is_owner}'
 
@@ -89,10 +90,9 @@ class products(models.Model):
 class inovices(models.Model):
 
     paid_mode_choices = [
-        ('wlt' , 'wallet') , 
-        ('kbk' , 'kart-be-kart'),
-        ('arz' , 'arz-digital')
-    ]
+                        ('wlt' , 'wallet') , 
+                        ('kbk' , 'kart-be-kart'),
+                        ('arz' , 'arz-digital')]
 
     user_id = models.ForeignKey(to = users , to_field='user_id' , on_delete= models.DO_NOTHING)
     user_username = models.CharField(max_length = 56 , null = True , blank = True)
@@ -107,9 +107,10 @@ class inovices(models.Model):
     paid_status = models.PositiveBigIntegerField(default = 0)
     paid_mode = models.CharField(max_length = 3 , choices = paid_mode_choices)
     
-    # later added
+    # / -1
     config_name = models.CharField(max_length= 56 , blank= True , null= True)
     kind_pay = models.CharField(max_length=12 , blank=True , null=True)
+    
     class Meta:
         db_table = 'v2_inovices'
 
@@ -120,7 +121,7 @@ class payments(models.Model):
     user_id = models.ForeignKey( to = users , to_field='user_id' , on_delete= models.DO_NOTHING)
     amount = models.BigIntegerField()
     decline_reason = models.CharField(max_length= 256 , null=True , blank= True)
-    payment_stauts = models.CharField(max_length = 56 , null=True , blank=True)
+    payment_status = models.CharField(max_length = 56 , null=True , blank=True)
     inovice_id = models.ForeignKey(to = inovices , on_delete= models.DO_NOTHING ,null=True , blank= True)
     payment_time = models.DateTimeField(auto_now_add=True)
 

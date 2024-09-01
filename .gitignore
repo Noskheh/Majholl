@@ -8,6 +8,4 @@ __pycache__/
 .vscode
 samples.txt
 general_guide.txt
-
-mainrobot/migrations/
 datas/*

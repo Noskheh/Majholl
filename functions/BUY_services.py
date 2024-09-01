@@ -247,7 +247,7 @@ def tamdid_pay_with_wallet(call , bot , product_dict , panel_loaded):
                                     config_name = info['config_name'] ,paid_status = 1 , # 0 > unpaid , 1 > paid , 2 > waiting  , 3 > disagree 
                                     paid_mode= 'wlt', kind_pay='Tamdid' )
         
-        payments_ = payments.objects.create(user_id=user_ , amount=info['pro_cost'] , payment_stauts='accepted' , inovice_id=inovivces_)
+        payments_ = payments.objects.create(user_id=user_ , amount=info['pro_cost'] , payment_status='accepted' , inovice_id=inovivces_)
         
         try :
             send_request = panelsapi.marzban(info['panel_number']).put_user(info['config_name'] , info['product_id'])
@@ -385,7 +385,7 @@ def how_to_send(request_ , panel_id , BOT , call_userid):
 #------------------------------ creations db objects ---------------------------------------------------------
 def create_payment(user_id , amount , paymenent_status , inovice_id):
     try:
-        payment_ =payments.objects.create(user_id=user_id , amount=amount , payment_stauts=paymenent_status , inovice_id=inovice_id)
+        payment_ =payments.objects.create(user_id=user_id , amount=amount , payment_status=paymenent_status , inovice_id=inovice_id)
         return payment_
     except Exception as payment_error:
         print(f'an error eccoured when adding payment {payment_error}')

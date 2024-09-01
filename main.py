@@ -1065,7 +1065,7 @@ def agree_or_disagree_kbk_payment(call):
         inovices_1.paid_status = 1 # accpeted
         inovices_1.save()
         users_ = users.objects.get(user_id = int(call_data[-1]))
-        payments_ = payments.objects.create(user_id = users_ , amount = user_basket['pro_cost']  , payment_stauts = 'accepted' , inovice_id = inovices_1)
+        payments_ = payments.objects.create(user_id = users_ , amount = user_basket['pro_cost']  , payment_status = 'accepted' , inovice_id = inovices_1)
 
         if NUMBER_OF_PANEL_LOADED['one_panel'] == True  or NUMBER_OF_PANEL_LOADED['two_panels'] == True:
             if ('open' and 'zarfit') in user_basket['statement'] :
@@ -1093,7 +1093,7 @@ def agree_or_disagree_kbk_payment(call):
         inovices_2 = inovices.objects.get(id = TAMDID_FISH[int(call_data[-1])]['inovices'].id)
         inovices_2.paid_status = 3 # rejected
         inovices_2.save()
-        payments_ = payments.objects.create(user_id = users_ , amount = user_basket['pro_cost'] ,payment_stauts = 'declined' , inovice_id = inovices_2)
+        payments_ = payments.objects.create(user_id = users_ , amount = user_basket['pro_cost'] ,payment_status = 'declined' , inovice_id = inovices_2)
         
         bot.send_message(call.message.chat.id , 'علت رد پرداخت را ارسال کنید')
         
@@ -1271,7 +1271,7 @@ def charge_wallet_profilewallet(message):
             if message.text.isdigit(): 
                 bot.send_message(message.chat.id , buy_service_section_card_to_card_msg(int(message.text)))
                 users_ = users.objects.get(user_id = message.chat.id )
-                payments_ = payments.objects.create(user_id = users_ , amount = message.text , payment_stauts = 'waiting' )
+                payments_ = payments.objects.create(user_id = users_ , amount = message.text , payment_status = 'waiting' )
                 CHARGE_WALLET[message.from_user.id]['charge_wallet'] = False
                 CHARGE_WALLET[message.from_user.id]['send_fish'] = True
                 CHARGE_WALLET[message.from_user.id]['amount']= message.text
@@ -1325,7 +1325,7 @@ def accepts_decline(call):
     if call.data.startswith('wallet_accepts_'):
         if int(userId[-1]) in CHARGE_WALLET:
             payments_ = CHARGE_WALLET[int(userId[-1])]['payment_ob']
-            payments_.payment_stauts = 'accepted'
+            payments_.payment_status = 'accepted'
             payments_.save()
 
             users_ = users.objects.get(user_id = userId[-1])
@@ -1354,7 +1354,7 @@ def get_decline_reason(message):
         for i in CHARGE_WALLET.keys():
             user_id = i
         payments_ = CHARGE_WALLET[user_id]['payment_ob']
-        payments_.payment_stauts = 'declined'
+        payments_.payment_status = 'declined'
         payments_.decline_reason = message.text
         payments_.save()
         user_reject_reason = f"""
@@ -2580,7 +2580,7 @@ def bot_statics(call):
 
         user_ = users.objects.all().count()
         inovices_ = inovices.objects.all().count()
-        payment_ = payments.objects.filter(payment_stauts = 'accepted').all().count()
+        payment_ = payments.objects.filter(payment_status = 'accepted').all().count()
         v2panel_ = v2panel.objects.all().count()
         product_ = products.objects.all().count()
         Text_1 = f"""
@@ -2649,7 +2649,7 @@ def bot_statics(call):
             product_static_list = []
             product_static_list.append(Text_products)
             
-            payments_accpeted_id = [i.inovice_id_id for i in  payments.objects.filter(payment_stauts= 'accepted' , inovice_id__isnull=False)]
+            payments_accpeted_id = [i.inovice_id_id for i in  payments.objects.filter(payment_status= 'accepted' , inovice_id__isnull=False)]
             product_count_name = inovices.objects.filter(id__in = payments_accpeted_id).values('product_name').annotate(Count('product_name'))[:5]
             
             for num,i in enumerate(product_count_name ,1):
@@ -2734,15 +2734,16 @@ def bot_statics(call):
 📊- آمار پرداخت‌ها 
 
 ── تعداد کل پرداختی ها  : {payments_.aggregate(Count('id'))['id__count']} عدد
-── تعداد کل پرداختی های موفق : {payments_.filter(payment_stauts ='accepted').aggregate(Count('id'))['id__count']} عدد
-── تعداد کل پرداختی های ناموفق  : {payments_.filter(payment_stauts ='declined').aggregate(Count('id'))['id__count']} عدد
-── کل پرداختی های موفق  : {format(int(payments_.filter(payment_stauts ='accepted').aggregate(Sum('amount'))['amount__sum']), ',')} تومان
+── تعداد کل پرداختی های موفق : {payments_.filter(payment_status ='accepted').aggregate(Count('id'))['id__count']} عدد
+── تعداد کل پرداختی های ناموفق  : {payments_.filter(payment_status ='declined').aggregate(Count('id'))['id__count']} عدد
+── کل پرداختی های موفق  : {format(int(payments_.filter(payment_status ='accepted').aggregate(Sum('amount'))['amount__sum']), ',')} تومان
 
 .
 """
-            bot.edit_message_text(Text_payments, call.message.chat.id, call.message.message_id , reply_markup=BotKb.bot_static(payments=True))
         else:
             Text_payments = 'هنوز آماری برای ارائه وجود ندارید'
+            
+            bot.edit_message_text(Text_payments, call.message.chat.id, call.message.message_id , reply_markup=BotKb.bot_static(payments=True))
 
     if call.data == 'back_from_bot_statics':
         bot.edit_message_text('به مدیریت ربات خوش امدید', call.message.chat.id , call.message.message_id , reply_markup= BotKb.management_menu_in_admin_side(user_id = call.from_user.id))
