@@ -28,9 +28,6 @@ class BotkeyBoard:
                 button_robot_management = InlineKeyboardButton(text = '⚙️ مدیریت ربات',callback_data = 'robot_management')
                 keyboard.add(button_robot_management)
 
-        
-        
-
         return keyboard
     
 
@@ -43,7 +40,7 @@ class BotkeyBoard:
 
         admin_side_ui_buttom = [
                                 [('🖥 مدیریت پنل ها ' , 'panels_management') , ('🎛مدیریت فروشگاه' , 'products_management')] ,
-                                [('📈آمار ربات' , 'bot_statics') ] , 
+                                [('📈آمار ربات' , 'bot_statics')] , 
                                 [('👤مدیریت کاربران', 'users_management'), ('🧑🏼‍💻مدیریت ادمین ها' , 'admins_management')] ,
                                 [('🤖تنظیمات ربات ', 'bot_managment')]
                                 ]
@@ -84,6 +81,14 @@ class BotkeyBoard:
                 for inner in  admin_side_ui_buttom :
                     if users_managemet in inner:
                         inner.remove(users_managemet)
+
+
+            if admins_.acc_staticts == 0:
+                acc_staticts = ('📈آمار ربات' , 'bot_statics')
+                for inner in admin_side_ui_buttom :
+                    if acc_staticts in inner:
+                        inner.remove(acc_staticts)
+
 
         for row in admin_side_ui_buttom :
             row_buttons = []
@@ -134,6 +139,7 @@ class BotkeyBoard:
 
         buttons_raw = [ [(ir_number(irnumber) , 'ir_number'),('احراز هویت با شماره' , 'ir_number')],
                         [('⬇️⬆️ موجودی کاربر ' , 'increase_decrease_cash'), ('🔴🟢 انسداد کاربر ', 'block_unblock_user')],
+                        [('📨ارسال پیام به کاربران', 'send_msgs_to_users')]
                         ]
 
 
@@ -1088,11 +1094,12 @@ class BotkeyBoard:
         #status_txt = lambda botstatus : '❌غیر فعال' if botstatus == 0 else  '✅فعال'
         
 
-        buttons_raw  = [[(status_txt(admins_.acc_panels) , f'accpanels_{str(admins_.user_id)}') , ('دسترسی به تنظیمات پنل ها' , f'accpanel_{str(admins_.user_id)}')],
-                       [(status_txt(admins_.acc_products) , f'accproducts_{str(admins_.user_id)}') , ('دسترسی به تنظیمات محصولات ها' , f'accprodu_{str(admins_.user_id)}')],
+        buttons_raw  = [[(status_txt(admins_.acc_panels) , f'accpanels_{str(admins_.user_id)}') , ('دسترسی به تنظیمات پنل ها' , f'accpanels_{str(admins_.user_id)}')],
+                       [(status_txt(admins_.acc_products) , f'accproducts_{str(admins_.user_id)}') , ('دسترسی به تنظیمات محصولات ها' , f'accproducts_{str(admins_.user_id)}')],
                        [(status_txt(admins_.acc_botmanagment) , f'accpbotseeting_{str(admins_.user_id)}') , ('دسترسی به تنظیمات مدیریت بات' , f'accpbotseeting_{str(admins_.user_id)}')],
                        [(status_txt(admins_.acc_admins) , f'accadmins_{str(admins_.user_id)}') , ('دسترسی به تنظیمات ادمین ها ', f'accadmins_{str(admins_.user_id)}')],
-                        [(status_txt(admins_.acc_users) , f'accusermanagment_{str(admins_.user_id)}') , ('دسترسی به مدیریت یوزر ها', f'accusermanagment_{str(admins_.user_id)}')]]
+                       [(status_txt(admins_.acc_users) , f'accusermanagment_{str(admins_.user_id)}') , ('دسترسی به مدیریت یوزر ها', f'accusermanagment_{str(admins_.user_id)}')],
+                       [(status_txt(admins_.acc_staticts) , f'accbotstaticts_{str(admins_.user_id)}') , ('دسترسی به آمار ربات', f'accbotstaticts_{str(admins_.user_id)}')]]
 
         for row in buttons_raw:
             buttons_list = []
@@ -1383,6 +1390,23 @@ class BotkeyBoard:
             button_list = []
             for text , data in raw:
                 button = InlineKeyboardButton(text=text , callback_data=data)
+                button_list.append(button)
+            keyboard.add(*button_list)
+
+        return keyboard
+    
+
+    
+    @staticmethod
+    def send_user_msg():
+        keyboard = InlineKeyboardMarkup()
+        raw_buttons = [[('👤ارسال پیام به کاربر' , 'send_msg_single_user')],
+                        [('📢ارسال پیام همگانی' , 'send_msg_boardcasting'), ('↪️ فروارد همگانی ' , 'send_msg_forwarding')],
+                        [('بازگشت ' , 'back_from_send_msg')]]
+        for raw in raw_buttons:
+            button_list = []
+            for text,data in raw:
+                button = InlineKeyboardButton(text=text, callback_data=data)
                 button_list.append(button)
             keyboard.add(*button_list)
 

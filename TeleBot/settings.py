@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
-
+from mainrobot.management.commands.dbinfo import db
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -79,7 +79,7 @@ WSGI_APPLICATION = 'TeleBot.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'v2bot',
+        'NAME': f'{db[0] if len(db) >=1 else "None"}',
         'USER' : 'root',
         'HOST' : 'localhost',
         'PORT' : '3306',

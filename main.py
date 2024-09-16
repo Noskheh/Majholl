@@ -1269,17 +1269,20 @@ def charge_wallet_profilewallet(message):
 
         else:
             if message.text.isdigit(): 
-                bot.send_message(message.chat.id , buy_service_section_card_to_card_msg(int(message.text)))
-                users_ = users.objects.get(user_id = message.chat.id )
-                payments_ = payments.objects.create(user_id = users_ , amount = message.text , payment_status = 'waiting' )
-                CHARGE_WALLET[message.from_user.id]['charge_wallet'] = False
-                CHARGE_WALLET[message.from_user.id]['send_fish'] = True
-                CHARGE_WALLET[message.from_user.id]['amount']= message.text
-                CHARGE_WALLET[message.from_user.id]['payment_ob'] = payments_
-
+                load_shomarekart = buy_service_section_card_to_card_msg(int(message.text))
+                if load_shomarekart == 'هیچ شماره کارت فعالی وجود نداره':
+                    bot.send_message(message.chat.id , 'هیچ شماره کارت فعالی وجود ندارد')
+                    clear_dict(CHARGE_WALLET , message.from_user.id)
+                else:
+                    bot.send_message(message.chat.id , load_shomarekart)
+                    users_ = users.objects.get(user_id = message.chat.id )
+                    payments_ = payments.objects.create(user_id = users_ , amount = message.text , payment_status = 'waiting' )
+                    CHARGE_WALLET[message.from_user.id]['charge_wallet'] = False
+                    CHARGE_WALLET[message.from_user.id]['send_fish'] = True
+                    CHARGE_WALLET[message.from_user.id]['amount']= message.text
+                    CHARGE_WALLET[message.from_user.id]['payment_ob'] = payments_
             else:
                 bot.send_message(message.chat.id , 'لطفا مقدار عددی  وارد کنید \n\n برای لغو کردن انتقال :  /CANCEL')
-        
         return
     
 
@@ -1291,10 +1294,11 @@ def charge_wallet_profilewallet(message):
             bot.send_message(message.chat.id, Text_1 , reply_markup=BotKb.wallet_profile(message.chat.id))
 
         else:
-            user_ = users.objects.get(user_id = message.from_user.id)
-            Text_2 = f'درخواست شارژ کیف پول شما برای ادمین ارسال شد '
-            amount = CHARGE_WALLET[message.from_user.id]['amount']
-            charge_wallet_txt = f'''
+            if message.content_type == 'photo':
+                user_ = users.objects.get(user_id = message.from_user.id)
+                Text_2 = f'درخواست شارژ کیف پول شما برای ادمین ارسال شد '
+                amount = CHARGE_WALLET[message.from_user.id]['amount']
+                charge_wallet_txt = f'''
 【✣ درخواست شارژ کیف پول در سیستم ثبت شده است ✣】
 ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
 
@@ -1305,10 +1309,13 @@ def charge_wallet_profilewallet(message):
 
     ¦─ در صورت تایید گزینه تایید پرداخت ✅ را بزنید در غیر این صورت رد پرداخت ❌  را بزنید
 '''
-            CHARGE_WALLET[message.from_user.id]['send_fish'] = False
-            CHARGE_WALLET[message.from_user.id]['user_id'] = message.from_user.id
-            bot.send_message(message.chat.id , Text_2)
-            bot.send_photo((i.user_id for i in admins.objects.all()) , message.photo[-1].file_id, caption=charge_wallet_txt , reply_markup=BotKb.wallet_accepts_or_decline(message.chat.id))
+                CHARGE_WALLET[message.from_user.id]['send_fish'] = False
+                CHARGE_WALLET[message.from_user.id]['user_id'] = message.from_user.id
+                bot.send_message(message.chat.id , Text_2)
+                bot.send_photo((i.user_id for i in admins.objects.all()) , message.photo[-1].file_id, caption=charge_wallet_txt , reply_markup=BotKb.wallet_accepts_or_decline(message.chat.id))
+            else:
+                bot.send_message(message.chat.id , 'مورد ارسالی باید به صورت تصویر باشد\n مجدد امتحان فرمایید\n /add_money')
+                clear_dict(CHARGE_WALLET , message.from_user.id)
         return
         
 
@@ -2394,12 +2401,13 @@ def get_changing_product_details_name(message):
 # --------------------------------------------------------------------------------------------------------------------------------#
 
 #//TODO make it better if you could
+#//TODO add feature to access bot static or disabling it
 
 USER_ADMIN_INFO = {'user_id':None , 'page_item':1 ,
                    'add_admin':False ,'add_admin_id':int ,
-                     'admin_name' : False}
+                    'admin_name' : False}
 
-@bot.callback_query_handler(func= lambda call  : call.data in ['admins_management', 'add_new_admin', 'back_from_admin_menu' , 'back_from_admin_access'] or call.data.startswith(('Anext_','Abefore_' ,'load_' , 'adminremove_' , 'adminaccess_', 'accpanels_','accproducts_' ,'accpbotseeting_' , 'accadmins_' , 'accusermanagment_')))
+@bot.callback_query_handler(func= lambda call  : call.data in ['admins_management', 'add_new_admin', 'back_from_admin_menu' , 'back_from_admin_access'] or call.data.startswith(('Anext_','Abefore_' ,'load_' , 'adminremove_' , 'adminaccess_', 'accpanels_','accproducts_' ,'accpbotseeting_' , 'accadmins_' , 'accusermanagment_' , 'accbotstaticts_')))
 def admins_management(call):
 
     if call.data == 'admins_management':
@@ -2506,6 +2514,7 @@ def admins_management(call):
         bot.edit_message_text(Text_5 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_admin_acc(user_id= int(call_data[-1])))
 
 
+
     if call.data.startswith('accusermanagment_'):
         call_data = call.data.split('_')
         admins_ = admins.objects.get(user_id = int(call_data[-1]))
@@ -2517,14 +2526,20 @@ def admins_management(call):
 
 
 
+    if call.data.startswith('accbotstaticts_'):
+        call_data = call.data.split("_")
+        admins_ = admins.objects.get(user_id = int(call_data[-1]))
+        new_acc_staticts = 1 if admins_.acc_staticts == 0 else 0
+        admins_.acc_staticts = new_acc_staticts
+        admins_.save()
+        Text_6 = f'به قسمت مدیریت دسترسی های ادمین خوش امدید'
+        bot.edit_message_text(Text_6 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_admin_acc(user_id= int(call_data[-1])))
+
+
 
     if call.data =='back_from_admin_access':
         Text_back = 'برای مدیریت  ادمین ها بروی انها کلیک کنید'
         bot.edit_message_text(Text_back , call.message.chat.id , call.message.message_id , reply_markup= BotKb.show_admins())
-
-
-
-
 
 
     if call.data =='back_from_admin_menu':
@@ -2577,13 +2592,14 @@ def add_new_admin(message):
 @bot.callback_query_handler(func= lambda call: call.data in ['bot_statics', 'back_from_bot_statics', 'users_static', 'products_static', 'panels_static', 'inovices_static', 'payments_static'])
 def bot_statics(call):
     if call.data =='bot_statics':
-
-        user_ = users.objects.all().count()
-        inovices_ = inovices.objects.all().count()
-        payment_ = payments.objects.filter(payment_status = 'accepted').all().count()
-        v2panel_ = v2panel.objects.all().count()
-        product_ = products.objects.all().count()
-        Text_1 = f"""
+        admins_ = admins.objects.get(user_id = int(call.from_user.id))
+        if (admins_.acc_staticts == 1 and admins_.acc_staticts ==1) or admins_.is_owner ==1:
+            user_ = users.objects.all().count()
+            inovices_ = inovices.objects.all().count()
+            payment_ = payments.objects.filter(payment_status = 'accepted').all().count()
+            v2panel_ = v2panel.objects.all().count()
+            product_ = products.objects.all().count()
+            Text_1 = f"""
 
         آمار ربات به صورت زیر میباشد
 👤 تعداد کل یوزر های ربات: {user_}
@@ -2593,7 +2609,9 @@ def bot_statics(call):
 📃 تعداد کل فاکتور های صادر شده : {inovices_}
         """
         
-        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.bot_static())
+            bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.bot_static())
+        else :
+            bot.send_message(call.message.chat.id , 'شما اجازه دسترسی به این قسمت را ندارید')
 
 
 
@@ -3614,6 +3632,199 @@ def handle_block_unblock_userid(message):
 
 
 
+#----------------------------------------------------------------------------------------------------------------------------#
+# -------------------------Send-msg-to-users management----------------------------------------------------------------------#
+# ---------------------------------------------------------------------------------------------------------------------------#
+
+# //TODO add table boardcasting for sending boardcasting to all users 
+# //TODO add feature to cancel sending boardcasting 
+# //TODO add feature to get accept or reject keyboard for forwarding msgs
+# //TODO add feature to send msg to users who  have not account or had accounts or having at least one account
+
+
+SIND_SINGLE_MSG = {'get_userid':False ,'get_msg':False, 'user_id': False}
+
+BOARDCATING = {'send_boardcating_state_one': False , 'send_boardcating_state_two':False , 'msg_to_store':None , 'admin_requested':None,
+               'forward_boardcating_state_one': False , 'forward_boardcating_state_two':False}
+
+@bot.callback_query_handler(func= lambda call: call.data in ['send_msgs_to_users', 'send_msg_single_user', 'send_msg_boardcasting','send_msg_forwarding', 'back_from_send_msg'])
+def handle_sending_users_msg(call):
+    if call.data =='send_msgs_to_users':
+        Text_1 = 'برای ارسال پیام به کاربران از گزینه های زیر استفاده نمایید'
+        bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id, reply_markup=BotKb.send_user_msg())
+
+
+    if call.data =='send_msg_single_user':
+        Text_2 = '🆔ایدی عددی شخصی را که میخواهید پیام بدهید را ارسال نمایید\n TO CANCEL : /CANCEL'
+        SIND_SINGLE_MSG['get_userid']=True
+        bot.edit_message_text(Text_2, call.message.chat.id , call.message.message_id)
+
+
+
+    if call.data =='send_msg_boardcasting':
+        BOARDCATING['send_boardcating_state_one'] = True
+        Text_3 = 'متنی را که میخواهید برای تمام اعضای ربات بفرستید را ارسال نمیایید\n TO CANCEL : /CANCEL'
+        bot.edit_message_text(Text_3, call.message.chat.id , call.message.message_id)
+
+    if call.data =='send_msg_forwarding':
+        BOARDCATING['forward_boardcating_state_one'] = True
+        Text_4 = ' متنی را که میخواهید برای تمام اعضای ربات فوروارد نمیایید را ارسال نمایید \n ⚠️ با ارسال پیام عمل فوروارد کردن درجا آغاز میشود\n TO CANCEL : /CANCEL'
+        bot.edit_message_text(Text_4, call.message.chat.id , call.message.message_id)
+
+
+    if call.data =='back_from_send_msg':
+        bot.edit_message_text('برای ارسال پیام به کاربران از گزینه های زیر استفاده نمایید', call.message.chat.id, call.message.message_id, reply_markup=BotKb.send_user_msg())
+
+
+
+
+
+@bot.message_handler(func= lambda message: SIND_SINGLE_MSG['get_userid']==True or SIND_SINGLE_MSG['get_msg'] == True or BOARDCATING['send_boardcating_state_one'] == True or BOARDCATING['forward_boardcating_state_one'] == True , content_types=['text','photo','video'])
+def handle_single_msg(message):
+
+    if SIND_SINGLE_MSG['get_userid'] == True:
+        if message.text == '/cancel' or message.text =='/cancel'.upper():
+            SIND_SINGLE_MSG.update({key : False for key in SIND_SINGLE_MSG.keys()})
+            bot.send_message(message.chat.id, 'برای ارسال پیام به کاربران از گزینه های زیر استفاده نمایید', reply_markup=BotKb.send_user_msg())
+        else:
+            if message.text.isdigit():
+                    user_ = users.objects.get(user_id = int(message.text))
+                    if  user_:
+                        SIND_SINGLE_MSG['get_userid'] = False
+                        SIND_SINGLE_MSG['get_msg'] = True
+                        SIND_SINGLE_MSG['user_id'] = message.text
+                        bot.send_message(message.chat.id, '📝متن پیام خود را برای ارسال به کاربر مورد نظر ارسال فرمایید\n TO CANCEL : /CANCEL')
+                    else:
+                        bot.send_message(message.chat.id , 'کاربری با این نام کاربری پیدا نشد')
+            else:
+                bot.send_message(message.chat.id , 'فقط ایدی عددی مجاز میباشد')
+            return
+
+
+    if SIND_SINGLE_MSG['get_msg'] == True:
+        if message.text == '/cancel' or message.text =='/cancel'.upper():
+            SIND_SINGLE_MSG.update({key : False for key in SIND_SINGLE_MSG.keys()})
+            bot.send_message(message.chat.id, 'برای ارسال پیام به کاربران از گزینه های زیر استفاده نمایید', reply_markup=BotKb.send_user_msg())
+        else:
+            admins_ = admins.objects
+            admin_info = admins_.get(user_id = message.from_user.id)
+            Text_1 = f'📧شما یک پیام دریافت کردید\nمتن پیام :\n {message.text}\n'
+            Text_2 = '✅ پیام شما با موفقیت ارسال گردید'
+            
+            bot.send_message(SIND_SINGLE_MSG['user_id'] , Text_1)
+            bot.send_message(message.chat.id , Text_2)
+
+            if admin_info.is_admin:
+                owner_id = admins_.filter(is_owner =1).values('user_id')[0]['user_id']
+                owner_msg_single_user_msg = f'یک پیام برای کاربر : {SIND_SINGLE_MSG["user_id"]} \n از طرف ادمین : {admin_info.user_id} با نام {admin_info.admin_name} \nارسال شد'
+                bot.send_message(owner_id , owner_msg_single_user_msg)
+                
+            bot.send_message(message.chat.id, 'برای ارسال پیام به کاربران از گزینه های زیر استفاده نمایید', reply_markup=BotKb.send_user_msg())
+
+            SIND_SINGLE_MSG.update({key : False for key in SIND_SINGLE_MSG.keys()})
+        return
+
+
+
+    if BOARDCATING['send_boardcating_state_one'] == True :
+        if message.text =='/cancel' or  message.text =='/cancel'.upper():
+            BOARDCATING.update({key:False for key in BOARDCATING.keys() if key !='msg_to_store' and key !='admin_requested'})
+            bot.send_message(message.chat.id, 'برای ارسال پیام به کاربران از گزینه های زیر استفاده نمایید', reply_markup=BotKb.send_user_msg())
+        else:
+            admins_ = admins.objects
+            BOARDCATING['msg_to_store'] = message.text
+            keyboard = InlineKeyboardMarkup().add(InlineKeyboardButton('تایید✅',callback_data='verify_send_msg_to_all'),InlineKeyboardButton('لغو و بازگشت ❌',callback_data='cancel_send_msg_to_all'))
+            owner_msg = f'🔖درخواست ارسال یک پیام همگانی در ربات ثبت شده است \n متن پیام : {message.text} \n در صورت تایید گزینه ارسال را بزنید در غیر این صورت گزینه لغو را ارسال نمایید'
+            request_admin = admins_.get(user_id = message.from_user.id)
+            owner_id = admins_.filter(is_owner =1).values('user_id')[0]['user_id']
+            if request_admin.is_admin and request_admin.user_id == message.from_user.id:
+                bot.send_message(request_admin.user_id, 'درخواست شما ثبت شد پس از تایید به اطلاع شما خواهد رسید')
+                bot.send_message(owner_id,owner_msg, reply_markup=keyboard)
+                BOARDCATING['admin_requested'] = request_admin.user_id
+            else:
+                bot.send_message(owner_id ,owner_msg, reply_markup=keyboard)
+            BOARDCATING['send_boardcating_state_one'] =False
+        return
+
+
+
+
+    if BOARDCATING['forward_boardcating_state_one'] == True :
+        
+        if message.text =='/cancel' or  message.text =='/cancel'.upper():
+            BOARDCATING.update({key:False for key in BOARDCATING.keys() if key !='msg_to_store' and key !='admin_requested'})
+            bot.send_message(message.chat.id, 'برای ارسال پیام به کاربران از گزینه های زیر استفاده نمایید', reply_markup=BotKb.send_user_msg())
+        else:
+            admins_ = admins.objects
+            request_admin = admins_.get(user_id = message.from_user.id)
+            owner_id = admins_.filter(is_owner =1).values('user_id')[0]['user_id']
+            text_msg_status = f'یک پیام همگانی در حال فوروارد برای همه اعضای ربات میباشد '
+            if owner_id == message.from_user.id:
+                bot.send_message(owner_id ,text_msg_status)
+                users_ = users.objects.all()       
+                total_user = users_.count()
+                i1 = 0
+                i2 = 10
+                while i1 <= total_user:
+                    chunk_size = users_[i1: i1+i2]
+                    for x in chunk_size:
+                        if x.user_id != owner_id :
+                            time.sleep(0.5)
+                            bot.forward_message(x.user_id, message.chat.id , message.message_id)
+                    i1 += i2
+            else:
+                bot.send_message(request_admin.user_id, 'شما امکان فوروارد کردن پیام همگانی را ندارید')
+            BOARDCATING['forward_boardcating_state_one'] =False
+        return
+
+
+
+@bot.callback_query_handler(func= lambda call : call.data in ['verify_send_msg_to_all', 'cancel_send_msg_to_all'])
+def handle_boradcating(call):
+    if call.data == 'verify_send_msg_to_all':
+        users_ = users.objects.all()
+        owner_id = admins.objects.filter(is_owner =1).values('user_id')[0]['user_id']
+        time_to_send = (users_.count() * 0.5) / 60
+        text_msg_status = f'یک پیام همگانی در حال ارسال برای همه اعضای ربات میباشد \n متن پیام : \n {BOARDCATING["msg_to_store"]}\n زمان تقریبی برای ارسال : {round(time_to_send,3)} دقیقه'
+        if BOARDCATING['admin_requested'] is not None :
+            bot.send_message(BOARDCATING['admin_requested'] , ' درخواست شما توسط اونر ربات تایید شد و در حال ارسال برای تمام اعضا میباشد')
+            bot.send_message(BOARDCATING['admin_requested'], text_msg_status)
+
+        bot.edit_message_text(text_msg_status, owner_id , call.message.message_id)
+        
+        
+        total_user = users_.count()
+        i1 = 0
+        i2 = 10
+        while i1 <= total_user:
+            chunk_size = users_[i1: i1+i2]
+            for x in chunk_size:
+                if x.user_id != owner_id or x.user_id != admins.objects.filter(is_admin =1).values('user_id')[0]['user_id']:
+                    time.sleep(0.5)
+                    bot.send_message(x.user_id , BOARDCATING['msg_to_store'])
+            i1 += i2
+    
+
+
+    if call.data =='cancel_send_msg_to_all':
+        if BOARDCATING['admin_requested'] is not None :
+            bot.send_message(BOARDCATING['admin_requested'] ,'درخواست ارسال پیام همگانی شما رد شد', reply_markup=BotKb.send_user_msg())
+        bot.send_message(call.message.chat.id ,'ارسال پیام همگانی لغو گردید' , reply_markup=BotKb.send_user_msg())
+        BOARDCATING.update({key : False  for key in BOARDCATING.keys() if key !='msg_to_store' and key !='admin_requested' })
+        print(BOARDCATING)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -3625,12 +3836,14 @@ def handle_block_unblock_userid(message):
 
 
 """
+
 # this used to import django in to the code / scripting runing
 import django 
 import os
 os.environ['DJANGO_SETTINGS_MODULE'] = 'TeleBot.settings'
 django.setup()
 prrint('Configured')
+
 
 """
 @bot.callback_query_handler(func= lambda call : call.data)

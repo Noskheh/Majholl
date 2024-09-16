@@ -1,5 +1,5 @@
-from mainrobot.models import v2panel , products , shomarekart
-
+from mainrobot.models import v2panel , shomarekart
+import random
 #-all editable messages 
 
 
@@ -81,39 +81,63 @@ def buy_service_section_product_send(link_kind , link=None , image_only=None):
 
 
 def buy_service_section_card_to_card_msg(cost): 
+    bank = None
+    bank_active_status = []
     try :
-        shomarekart_ = shomarekart.objects.get(bank_inmsg=1)
-        bank_kard = shomarekart_.bank_card
-        bank_owner = shomarekart_.ownername
-        bank_name = shomarekart_.bank_name
-    except Exception as error_find_card:
-        print(f'error no card exists \n\n error msg : {error_find_card}')
-    if shomarekart_.bank_status == 1 and shomarekart_.bank_inmsg ==1 :
-        kard = [str(bank_kard)[i : i+4] for i in range(0 , len(str(bank_kard)) , 4)]
-        buy_service_section_card_to_card_msg = f"""
-    ╮ برای  تکمیل خرید خود و دریافت لینک اشتراک خود  ╭
-
-        ┤ 💸مبلغ : {format(cost , ',')}
-    به این شماره کارت واریز کرده و سپس فیش واریزی را همین جا ارسال کنید
-
-    ▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐
+        shomarekart_ = shomarekart.objects.filter(bank_inmsg = 1)
+        if len(shomarekart_) >= 1 :
+            for i in shomarekart_:
+                if i.bank_status == 1:
+                    bank_active_status.append(i)
+        else:
+            return 'هیچ شماره کارت فعالی وجود نداره'
             
-    ┐  💳شماره کارت :‌  {(",".join(kard))}
-    ─ ✍🏻 نام صاحب کارت : {bank_owner}
-    ┘  🏦بانک عامل : {bank_name}
+        if len(bank_active_status) >= 1:        
+            random_shomarekart = random.choice(bank_active_status)
+            bank = random_shomarekart
+        else:
+            bank = None
 
-    ▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐
+        if bank : 
+            bank_kard = bank.bank_card
+            bank_owner = bank.ownername
+            bank_name = bank.bank_name
+            kard = [str(bank_kard)[i : i+4] for i in range(0 , len(str(bank_kard)) , 4)]
+            buy_service_section_card_to_card_msg = f"""
+╮ برای  تکمیل خرید خود و دریافت لینک اشتراک خود  ╭
 
-    - لطفا از اسپم کردن پرهیز نمایید⚠️
-    ┤ از ارسال رسید فیک اجتناب فرمایید ⚠️
-    - هرگونه واریزی اشتباه بر عهده شخص میباشد⚠️
+┤ 💸مبلغ : {format(cost , ',')}
+به این شماره کارت واریز کرده و سپس فیش واریزی را همین جا ارسال کنید
+▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐
+               
+┐  💳شماره کارت :‌  
+                    {(",".join(kard))}
+─ ✍🏻 نام صاحب کارت : {bank_owner}
 
-    TO CANCEL : /cancel
-    .
-                """ 
-        return buy_service_section_card_to_card_msg
-    else :
-        return 'هیچ شماره کارت فعالی وجود ندارد'
+ ┘  🏦بانک عامل : {bank_name}
+
+▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐
+- لطفا از اسپم کردن پرهیز نمایید⚠️
+┤ از ارسال رسید فیک اجتناب فرمایید ⚠️
+- هرگونه واریزی اشتباه بر عهده شخص میباشد⚠️
+
+TO CANCEL : /cancel
+.
+"""
+            return buy_service_section_card_to_card_msg
+            
+        else : 
+            return 'هیچ شماره کارت فعالی وجود نداره'
+
+    except shomarekart.DoesNotExist as not_found :
+        print(f'Error occured : \n file-name : bottext.py \n error_msg : {not_found}')    
+    
+    
+
+
+
+
+
 
 
 

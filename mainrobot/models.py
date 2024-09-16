@@ -35,9 +35,11 @@ class admins(models.Model):
     acc_botmanagment = models.BooleanField(default=False)
     acc_admins = models.BooleanField(default=False)
     acc_users = models.BooleanField(default=False)
+    acc_staticts = models.BooleanField(default=False)
 
     def __str__(self):
         return f'User {self.user_id}: Admin={self.is_admin}, Owner={self.is_owner}'
+
 
     class Meta:
         db_table = 'v2_admins'
