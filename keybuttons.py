@@ -5,7 +5,9 @@ import re ,  datetime , jdatetime
 
 
 class BotkeyBoard:
-    
+
+# ------------------------- User-Side --------------------------------------------------------------------------------------
+
     @staticmethod
     def main_menu_in_user_side(userId : int) :
 
@@ -31,6 +33,7 @@ class BotkeyBoard:
         return keyboard
     
 
+# ------------------------- Admin-Side -------------------------------------------------------------------------------------
 
     @staticmethod 
     def management_menu_in_admin_side(user_id = None) :
@@ -107,7 +110,7 @@ class BotkeyBoard:
 
 
 
-
+# ------------------------- Bot-Settings -----------------------------------------------------------------------------------
 
     @staticmethod
     def bot_management():
@@ -126,18 +129,16 @@ class BotkeyBoard:
         return keyboard
 
 
-
+# ------------------------- User-Settings ----------------------------------------------------------------------------------
 
     @staticmethod 
     def manage_users():
         keyboard = InlineKeyboardMarkup()
         
-        botsettings_ = botsettings.objects.all()
-        for i in botsettings_:
-            irnumber = i.irnumber
+        botsettings_ = botsettings.objects.values('irnumber')[0]['irnumber']
         ir_number = lambda txt : '✅' if txt == 1 else '❌'
-
-        buttons_raw = [ [(ir_number(irnumber) , 'ir_number'),('احراز هویت با شماره' , 'ir_number')],
+        buttons_raw = [ [(ir_number(botsettings_) , 'ir_number'),('احراز هویت با شماره' , 'ir_number')],
+                        [('👁 مشاهده اطلاعات کاربر ' , 'show_user_info')],
                         [('⬇️⬆️ موجودی کاربر ' , 'increase_decrease_cash'), ('🔴🟢 انسداد کاربر ', 'block_unblock_user')],
                         [('📨ارسال پیام به کاربران', 'send_msgs_to_users')]
                         ]
@@ -149,7 +150,7 @@ class BotkeyBoard:
                 buttons = InlineKeyboardButton(text=text , callback_data=data)
                 buttons_list.append(buttons)
             keyboard.add(*buttons_list)
-        back_buttons = InlineKeyboardButton('بازگشت ', callback_data='back_from_user_management')
+        back_buttons = InlineKeyboardButton('✤ - بازگشت به منوی قبلی - ✤', callback_data='back_from_user_management')
         keyboard.add(back_buttons)
 
         return keyboard
@@ -157,7 +158,8 @@ class BotkeyBoard:
 
 
             
-# -------------------------Channels----------------------------------------------------------------------------------------
+# ------------------------- Channels ---------------------------------------------------------------------------------------
+
     @staticmethod
     def load_channels(bot , Userid):
         keyboard = InlineKeyboardMarkup()
@@ -179,7 +181,7 @@ class BotkeyBoard:
 
 
 
-# -------------------------PANEL MANAGEMENT----------------------------------------------------------------------------------------
+# ------------------------- Panel-Management -------------------------------------------------------------------------------
     
     @staticmethod
     def panel_management_menu_in_admin_side():
@@ -435,7 +437,7 @@ class BotkeyBoard:
 
 
 
-# -------------------------PRODUCTS MANAGEMENT----------------------------------------------------------------------------------------
+# -------------------------Products-Management -----------------------------------------------------------------------------
 
 
     @staticmethod
@@ -495,15 +497,6 @@ class BotkeyBoard:
 
 
 
-
-
-
-
-
-
-
-
-
     @staticmethod 
     def product_managemet_remove_products(panel_pk , page:int=1 , item_peer_page:int=8) :
         keyboard=InlineKeyboardMarkup()
@@ -550,13 +543,6 @@ class BotkeyBoard:
         back_button=InlineKeyboardButton(text ='بازگشت ↪️' , callback_data='back_from_remove_products')  
         keyboard.add( back_button , row_width = 1)
         return keyboard
-
-
-
-
-
-
-
 
 
 
@@ -673,12 +659,6 @@ class BotkeyBoard:
 
 
 
-
-
-
-
-
-
     @staticmethod
     def product_changing_details(product_id : int ) :
 
@@ -730,9 +710,7 @@ class BotkeyBoard:
 
 
 
-# -------------------------BUY SECTION----------------------------------------------------------------------------------------
-
-
+# ------------------------- Buy-Section ------------------------------------------------------------------------------------
 
     @staticmethod 
     def chosing_panels_in_buying_section():
@@ -821,9 +799,7 @@ class BotkeyBoard:
 
 
 
-
-
-# ------------------------- tamdidi_service ----------------------------------------------------------------------------------------
+# ------------------------- Tamdidi-Service --------------------------------------------------------------------------------
     
     @staticmethod
     def show_user_subsctription(user_id):
@@ -843,24 +819,32 @@ class BotkeyBoard:
 
 
 
+# ------------------------- User_Service-Status ----------------------------------------------------------------------------
 
-
-
-# ------------------------- User_service status ----------------------------------------------------------------------------------------
     @staticmethod
-    def show_service_status(user_id):
+    def show_service_status(user_id , show_user_info = None):
         keyboard = InlineKeyboardMarkup()
         users_ = users.objects.get(user_id = user_id)
         subscriptions_ = subscriptions.objects.filter(user_id = users_).order_by('date_created').reverse()
 
+        back_button_data = 'back_from_service_status' if show_user_info is None else "back_from_show_user_info"
         buttons_list = []
         for i in subscriptions_:
-            buttons = InlineKeyboardButton(text= i.user_subscription , callback_data=f'serviceshow.{users_.user_id}.({i.user_subscription})')
+            user_sub_data = f'serviceshow.{users_.user_id}.({i.user_subscription})' if show_user_info is None else f'showuserinfo.{users_.user_id}.({i.user_subscription})'
+            buttons = InlineKeyboardButton(text= i.user_subscription , callback_data=user_sub_data)
             buttons_list.append(buttons)
-        button_back = InlineKeyboardButton(text='✤ - بازگشت به منوی قبلی - ✤'  , callback_data='back_from_service_status')
-        button_notinlist = InlineKeyboardButton(text='🚦 سرویس من در لیست نیست 🚦'  , callback_data='service_not_inlist')
 
-        keyboard.add(*buttons_list , button_notinlist , button_back , row_width=1)
+        button_notinlist = InlineKeyboardButton(text='🚦 سرویس من در لیست نیست 🚦'  , callback_data='service_not_inlist')
+        button_showuserinfo_other = InlineKeyboardButton(text='👀جست و جوی کاربر دیگری 👀'  , callback_data='show_user_info_other')
+
+        button_back = InlineKeyboardButton(text='✤ - بازگشت به منوی قبلی - ✤'  , callback_data=back_button_data)
+
+
+        if show_user_info is None :
+            keyboard.add(*buttons_list, button_notinlist, button_back, row_width=1)
+        else :
+            keyboard.add(*buttons_list, button_showuserinfo_other, button_back, row_width=1)
+
 
         return keyboard
     
@@ -884,7 +868,7 @@ class BotkeyBoard:
             last_online = 'بدون اتصال'
 
         buttons_list = [
-                    [(f'{service_status} ' , f'{service_status}') , ('وضعیت سرویس ' , 'en_di_service')] , 
+                    [(f'{service_status} ' , 'en_di_service') , ('وضعیت سرویس ' , 'en_di_service')] , 
                     [(f'{round(used_traffic , 2)} گیگ ' , f'{round(used_traffic , 2)}') , ('🔋حجم مصرفی', 'config_usage')],
                     [(f'{str(last_online)}' ,f'{str(last_online)}') , ('👁‍🗨زمان آخرین اتصال' , 'last_connection')] ,
                     [('📥 دریافت لینک اشتراک' , 'get_config_link') , ('🖼 دریافت QRcode اشتراک' , 'get_qrcode_link')]]
@@ -894,6 +878,7 @@ class BotkeyBoard:
             for text , data in row:
                 buttons = InlineKeyboardButton(text= text , callback_data=data)
                 button_list.append(buttons)
+
         back_button = InlineKeyboardButton('✤ - بازگشت به منوی قبلی - ✤' , callback_data='back_from_user_service_status')
         get_new_link = InlineKeyboardButton('❌ حذف لینک فعلی و دریافت لینک جدید ❌',  callback_data='get_new_link')
         get_removing_account = InlineKeyboardButton('❌ حذف کامل اشتراک ❌' , callback_data='get_removing_account')
@@ -906,9 +891,8 @@ class BotkeyBoard:
 
 
 
+# ------------------------- Wallet-Profile ----------------------------------------------------------------------------------
 
-
-# ------------------------- Wallet Profile ----------------------------------------------------------------------------------------
     @staticmethod 
     def wallet_profile(user_id , info  = False):
         keyboard = InlineKeyboardMarkup()
@@ -971,8 +955,7 @@ class BotkeyBoard:
 
 
 
-# ------------------------- admin-section ----------------------------------------------------------------------------------------
-
+# ------------------------- Admin-Section -----------------------------------------------------------------------------------
 
 
 #//TODO improve this section
@@ -1117,7 +1100,7 @@ class BotkeyBoard:
 
 
 
-# ------------------------- karts-section ----------------------------------------------------------------------------------------
+# ------------------------- Karts-Section -----------------------------------------------------------------------------------
 
 
     @staticmethod 
@@ -1212,13 +1195,14 @@ class BotkeyBoard:
     
 
 
-# ------------------------- joinCH-section ----------------------------------------------------------------------------------------
+# ------------------------- JoinCH-Section ----------------------------------------------------------------------------------
 
     @staticmethod 
     def manage_joinch():
         keyboard = InlineKeyboardMarkup()
         botsettings_ = botsettings.objects.all()
         status_txt = lambda botstatus : '❌غیر فعال' if botstatus == 0 else  '✅فعال'
+
         for i in botsettings_:
             buttons = [[(status_txt(i.forcechjoin), 'forcechjoin') , ('جوین اجباری' , 'forcechjoin')],
                        [('مدیریت کردن چنل ها ' ,'manage_forcejoin')],]
@@ -1298,7 +1282,7 @@ class BotkeyBoard:
     
 
 
-# ------------------------- increase or decrease-section ----------------------------------------------------------------------------------------
+# ------------------------- Increase-Decrease-Section -----------------------------------------------------------------------
     @staticmethod 
     def increase_or_decrease(amount_add = 1, user_id = None , current_cash = 5000 , operator = None ,):
         keyboard = InlineKeyboardMarkup()
@@ -1311,6 +1295,7 @@ class BotkeyBoard:
         elif amount_add < 0:
             amount_add = 0
             current_cash = current_cash * amount_add
+
         operator_verify = 'plus' if operator == '➕' else 'mines' if operator == '➖' else None
 
         raw_buttons = [[(format(current_cash , ',') , 'current_cash')], 
@@ -1318,7 +1303,7 @@ class BotkeyBoard:
                        [(f'{str(5000)} کاهش' , f'amount_decrease_{str(amount_add - 1 )}') , (f'{str(5000)} افزایش' , f'amount_increase_{str(amount_add + 1)}')],
                        [('تایید عملیات ✅' , f'verify_inde_{current_cash}_{operator_verify}_{user_id}')],
                        [('مبلغ دلخواه🔖' , 'wish_amount')],
-                       [('بازگشت ' , 'back_from_increase_decrease_cash')],]
+                       [('✤ - بازگشت به منوی قبلی - ✤' , 'back_from_increase_decrease_cash')],]
         
         for row in raw_buttons:
             buttons_list = []
@@ -1331,7 +1316,7 @@ class BotkeyBoard:
     
 
 
-# ------------------------- bot-static-section ----------------------------------------------------------------------------------------
+# ------------------------- Bot-Static-Section ------------------------------------------------------------------------------
     @staticmethod
     def bot_static(users = None, products = None, panels =None, inovices=None, payments=None):
         keyboard = InlineKeyboardMarkup()
@@ -1363,7 +1348,7 @@ class BotkeyBoard:
         return keyboard
     
 
-# ------------------------- block-unblock-section ----------------------------------------------------------------------------------------
+# ------------------------- Block-Unblock-Section ---------------------------------------------------------------------------
     @staticmethod
     def block_unblock(user_id = None , block = None , unblock = None):
         keyboard = InlineKeyboardMarkup()
@@ -1384,7 +1369,7 @@ class BotkeyBoard:
         raw_button = [[(f'وضعیت یوزر :‌ {block_unblock_txt}' , f'userid_{user_id}')],
                         [(block_text , f'block_user_{user_id}'), (unblock_text , f'unblock_user_{user_id}')],
                         [('📍تایید و ارسال پیام به یوزر', f'verify_sendmsg_{user_id}')],
-                        [('بازگشت ' , 'back_from_block_unblock')],]
+                        [('✤ - بازگشت به منوی قبلی - ✤' , 'back_from_block_unblock')],]
         
         for raw in raw_button:
             button_list = []
@@ -1402,7 +1387,7 @@ class BotkeyBoard:
         keyboard = InlineKeyboardMarkup()
         raw_buttons = [[('👤ارسال پیام به کاربر' , 'send_msg_single_user')],
                         [('📢ارسال پیام همگانی' , 'send_msg_boardcasting'), ('↪️ فروارد همگانی ' , 'send_msg_forwarding')],
-                        [('بازگشت ' , 'back_from_send_msg')]]
+                        [('✤ - بازگشت به منوی قبلی - ✤' , 'back_from_send_msg')]]
         for raw in raw_buttons:
             button_list = []
             for text,data in raw:
@@ -1411,3 +1396,76 @@ class BotkeyBoard:
             keyboard.add(*button_list)
 
         return keyboard
+    
+
+
+
+    # ------------------------- Show-User-Info ---------------------------------------------------------------------------
+    @staticmethod
+    def show_user_info_subscription(user_id , request_dict):
+        keyboard = InlineKeyboardMarkup()
+        subscriptions_ = subscriptions.objects
+        users_ = users.objects
+
+        user_info = users_.get(user_id = user_id)
+        subscriptions_config = subscriptions_.get(user_subscription = request_dict['username'])
+        
+        status_txt = lambda msg : '✅ فعال ' if msg == 1 else '❌ غیرفعال '
+        
+        if request_dict['status'] == 'active':
+            status_config = '✅ فعال '
+        elif request_dict['status'] == 'disabled' :
+            status_config = '❌ غیرفعال '
+        else:
+            status_config = '🕯 درانتظار اتصال'
+
+        #sui_ch = show user info change 
+
+        raw_buttons = [
+            [(status_config , f'suichstatus.{user_info.user_id}.({subscriptions_config.user_subscription})') , ('وضعیت سرویس', f'suichstatus.{user_info.user_id}.({subscriptions_config.user_subscription})')] ,
+            [('🔗 دریافت لینک اشتراک', f'suigetconfiglink.{user_info.user_id}.({subscriptions_config.user_subscription})') , ('🖼 دریافت QRcode اشتراک' , f'suigetqrcodelink.{user_info.user_id}.({subscriptions_config.user_subscription})')],        
+            [('➕ افزایش حجم اشتراک' , f'suiincreasedatalimit.{user_info.user_id}.{subscriptions_config.user_subscription}'), ('➖ کاهش حجم اشتراک' , f'suidecreasedatalimit.{user_info.user_id}.({subscriptions_config.user_subscription})')], 
+            [('⏳افزایش زمان اشتراک ' , f'suiincreaseexpire.{user_info.user_id}.{subscriptions_config.user_subscription}'), ('⌛️ کاهش زمان اشتراک ' , f'suidecreaseexpire.{user_info.user_id}.({subscriptions_config.user_subscription})')], 
+            [('❌ حذف لینک فعلی اشتراک ' , f'suirevokesubscription.{user_info.user_id}.{subscriptions_config.user_subscription}'),('❌حذف اشتراک ازپنل وحساب کاربر ' , f'suiremovepaneluser.{user_info.user_id}.({subscriptions_config.user_subscription})')], 
+            #[('✂️ سلب امتیاز از کاربر ' , f'suideprivationconfig.{user_info.user_id}.{subscriptions_config.user_subscription}'), ('🖇 اعطای اشتراک به کاربر دیگر', f'suigiveconfigtoother.{user_info.user_id}.{subscriptions_config.user_subscription}')], 
+            ]
+
+
+
+
+        button_list = []
+        for row in raw_buttons:
+            for text,data in row:
+                button = InlineKeyboardButton(text=text , callback_data=data) 
+                button_list.append(button)
+        keyboard.add(*button_list , row_width=2 )
+
+
+        remove_config_money_back = InlineKeyboardButton(text='📨حذف اشتراک و عودت وجه ' , callback_data= f'suiremoveservicemoneyback.{user_info.user_id}.{subscriptions_config.user_subscription}')
+        back_button = InlineKeyboardButton(text='✤ - بازگشت به منوی قبلی - ✤' , callback_data= 'back_from_show_user_info_config')
+        
+        keyboard.add(remove_config_money_back , back_button , row_width= 1)
+
+        return keyboard
+    
+
+
+
+
+
+    """ 
+    @staticmethod 
+    def user_statu():
+        keyboard = InlineKeyboardMarkup()
+
+        raw_buttons = [[('✅ فعال ', 'ch_to_active' ),('❌ غیرفعال ', 'ch_to_disable'),]]
+
+        for row in raw_buttons:
+            buttons_list = []
+            for text , data in row:
+                button = InlineKeyboardButton(text=text , callback_data=data)
+                buttons_list.append(button)
+        keyboard.add(*buttons_list)
+
+        return keyboard
+    """

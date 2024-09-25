@@ -63,43 +63,57 @@ class marzban:
             
 
 
-    def put_user(self , user_name , product_id):
+    def put_user(self , user_name, product_id=None, usernote=None, uuid_sui = None , expire_date_sui=None, date_limit_sui=None, inbounds_sui=None, status_sui=None):
+
         panel_url = self.panel_url + f'/api/user/{user_name}'
+
+        if product_id is not None :
+            product_ = products.objects.get(id = product_id)
+            inbounds_database = json.loads(product_.inbounds_selected)
+            data_limit = float(product_.data_limit)
+            expire_time = datetime.datetime.now() + datetime.timedelta(days = product_.expire_date)
+            expire_time_timstamp = datetime.datetime.timestamp(expire_time)
+        else : 
+            expire_time_timstamp = expire_date_sui
+            data_limit = date_limit_sui
+            inbounds = inbounds_sui
+            uuidconfig = uuid_sui 
+            status_config = status_sui.strip()  
+
+
+        inbound_db = {}
+        if inbounds_sui is None:
+            for i in inbounds_database:
+                inbound_db[i.strip()] = []
+                for x in inbounds_database[i]:
+                    inbound_db[i.strip()].append(x.strip())
+
+        uuid_ = str(uuid.uuid4()) if uuid_sui is  None else uuidconfig
+
+        user_note =  usernote if usernote is not None else ''
         
-        product_ = products.objects.get(id = product_id)
-        inbounds_database = json.loads(product_.inbounds_selected)
-        data_limit = float(product_.data_limit)
-        expire_time = datetime.datetime.now() + datetime.timedelta(days = product_.expire_date)
-
-        inbound = {}
-        for i in inbounds_database:
-            inbound[i.strip()] = []
-            for x in inbounds_database[i]:
-                inbound[i.strip()].append(x.strip())
-
         proxy_dict = {
-                    "proxies": {"vmess": {"id": str(uuid.uuid4())},"vless": {'flow':self.reality_flow if self.reality_flow else ""}},
-                    "inbounds":inbound,
-                    "expire": datetime.datetime.timestamp(expire_time),
-                    "data_limit": data_limit,
-                    "data_limit_reset_strategy": "no_reset",
-                    "status": "active",
-                    "note": f"renewed at :{datetime.datetime.now()} ",
+                    "proxies": {"vmess": {"id": uuid_},
+                                "vless": {"id": uuid_ ,'flow':self.reality_flow if self.reality_flow else ""}},
+                    "inbounds": inbound_db if inbounds_sui is None else inbounds,
+                    "expire": expire_time_timstamp, "data_limit": data_limit,
+                    "data_limit_reset_strategy": "no_reset", "status": status_config,
+                    "note": user_note,
                     "on_hold_timeout": "2023-11-03T20:30:00",
                     "on_hold_expire_duration": 0}
         
         try : 
             get_header = marzban.get_token_acces(self)
             put_user_requsts = requests.put(panel_url , json=proxy_dict , headers=get_header)
-
+            
             if put_user_requsts.status_code == 200:
                 return json.loads(put_user_requsts.content)
             else:
                 return False
             
-        except Exception as adduser_error:
-            print(f'api says : {adduser_error}')
-            
+        except Exception as modifyinguser_error:
+            print(f'An ERROR occured in [panelsapi.py - CALLING MARZBAN API - LINE 66-115 - FUNC put_user] \n\n\t Error-msg :{put_user_requsts.status_code} - {put_user_requsts.content} - {modifyinguser_error}')
+
 
 
 

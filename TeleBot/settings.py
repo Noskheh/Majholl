@@ -83,6 +83,7 @@ DATABASES = {
         'USER' : 'root',
         'HOST' : 'localhost',
         'PORT' : '3306',
+        'CONN_MAX_AGE': None,
         'OPTIONS' : {
             'init_command': "SET sql_mode='STRICT_ALL_TABLES' ",
             'charset': 'utf8mb4',

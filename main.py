@@ -9,6 +9,7 @@ from functions.PANEL_managing import *
 from functions.PRODUCTS_managing import *
 from functions.BUY_services import * 
 from functions.check_fun import *
+from functions.showuserinfo import *
 from tools import QRcode_maker
 from bottext import *
 import jdatetime , datetime
@@ -34,13 +35,15 @@ def start_bot(message) :
             if BLOCK_OR_UNBLOCK(UserId= user_.id) is False :
                 if FORCE_JOIN_CHANNEL(UserId=user_.id , Bot=bot) == True :
                     #- Canceling operations : panels , product
-                    PANEL_RECEIVING_STATE['Enable_Panel_Adding'] = False
-                    PRODUCT_RECEIVING_STATE['enable_product_adding'] = False
-                    CHANGING_PANEL_DETAILS.update({key : False for key in CHANGING_PANEL_DETAILS})
-                    CHNAGING_PRODUCT_DETAILS['Enable_Changing_Product_Deatails'] = False
-                    USER_ADMIN_INFO['admin_name'] = False
-                    USER_ADMIN_INFO['add_admin'] = False
-                    
+                    for i in admins.objects.all():
+                        if message.from_user.id == i.user_id:
+                            PANEL_RECEIVING_STATE['Enable_Panel_Adding'] = False
+                            PRODUCT_RECEIVING_STATE['enable_product_adding'] = False
+                            CHANGING_PANEL_DETAILS.update({key : False for key in CHANGING_PANEL_DETAILS})
+                            CHNAGING_PRODUCT_DETAILS['Enable_Changing_Product_Deatails'] = False
+                            USER_ADMIN_INFO['admin_name'] = False
+                            USER_ADMIN_INFO['add_admin'] = False
+                        
                     #clear requests 
                     clear_dict(marzban_panel_api_user , message.from_user.id)
                     #clear USER_BASKETS 
@@ -59,6 +62,8 @@ def start_bot(message) :
                     clear_dict(CHARGE_WALLET , message.from_user.id)
                     #clear INCREASE_DECREASE CAHS
                     clear_dict(USER_INCREASE_DECREASE_CASH , message.from_user.id)
+                    #clear SHOW_USER_INFO
+                    clear_dict(SHOW_USER_INFO , message.from_user.id)
 
                     bot.send_message(message.chat.id , welcome_msg , reply_markup= BotKb.main_menu_in_user_side(message.from_user.id))
 
@@ -2437,8 +2442,11 @@ def admins_management(call):
 
 
     if call.data == 'add_new_admin':
-        USER_ADMIN_INFO['add_admin'] = True
-        bot.edit_message_text('ایدی عددی ادمین را وارد کنید' , call.message.chat.id , call.message.message_id)
+        if call.from_user.id == admins.objects.filter(is_owner =1).values('user_id')[0]['user_id']:
+            USER_ADMIN_INFO['add_admin'] = True
+            bot.edit_message_text('ایدی عددی ادمین را وارد کنید\n TO CANCEL :/cancel' , call.message.chat.id , call.message.message_id)
+        else:
+            bot.answer_callback_query(call.id , 'شما امکان اضافه کردن ادمین را ندارید')
 
 
     if call.data.startswith('adminremove_'):
@@ -2554,8 +2562,13 @@ def admins_management(call):
 
 @bot.message_handler(func= lambda message : (USER_ADMIN_INFO['admin_name'] == False and USER_ADMIN_INFO['add_admin'] == True) or (USER_ADMIN_INFO['admin_name'] == True and USER_ADMIN_INFO['add_admin'] == False))
 def add_new_admin(message):
+
     if USER_ADMIN_INFO['add_admin'] == True and USER_ADMIN_INFO['admin_name'] == False:
-        if message.text.isdigit():
+        if message.text =='/cancel' or message.text=='/cancel'.upper():
+            USER_ADMIN_INFO.update({key : False for key in USER_ADMIN_INFO.keys() if key !='page_item' or key != 'add_admin_id'})
+            bot.send_message(message.chat.id , 'برای مدیریت  ادمین ها بروی انها کلیک کیند ', reply_markup=BotKb.show_admins())
+       
+        elif message.text.isdigit():
             bot.send_message(message.chat.id, 'ایدی عددی ادمین جدید دریافت شد \n یک نام برای ادمین انتخاب کنید')
             USER_ADMIN_INFO['add_admin'] = False
             USER_ADMIN_INFO['admin_name'] = True
@@ -3523,7 +3536,7 @@ def handle_block_unblock(call):
         bot.edit_message_text(Text_1 , call.message.chat.id , call.message.message_id)
 
     if call.data == 'back_from_block_unblock':
-        clear_dict(BLOCK_OR_UNBLOCK , call.from_user.id)
+        clear_dict(BLOCK_UNBLOCK_USER , call.from_user.id)
         Text_0 = 'به قسمت مدیریت یوزر ها خوش امدید'
         bot.edit_message_text(Text_0 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.manage_users())
 
@@ -3673,7 +3686,9 @@ def handle_sending_users_msg(call):
 
 
     if call.data =='back_from_send_msg':
-        bot.edit_message_text('برای ارسال پیام به کاربران از گزینه های زیر استفاده نمایید', call.message.chat.id, call.message.message_id, reply_markup=BotKb.send_user_msg())
+        Text_back = 'به قسمت مدیریت یوزر ها خوش امدیدبه قسمت مدیریت یوزر ها خوش امدید'
+
+        bot.edit_message_text(Text_back, call.message.chat.id, call.message.message_id, reply_markup=BotKb.manage_users())
 
 
 
@@ -3812,6 +3827,500 @@ def handle_boradcating(call):
         bot.send_message(call.message.chat.id ,'ارسال پیام همگانی لغو گردید' , reply_markup=BotKb.send_user_msg())
         BOARDCATING.update({key : False  for key in BOARDCATING.keys() if key !='msg_to_store' and key !='admin_requested' })
         print(BOARDCATING)
+
+
+#----------------------------------------------------------------------------------------------------------------------------#
+# -------------------------Watch-user-info-----------------------------------------------------------------------------------#
+# ---------------------------------------------------------------------------------------------------------------------------#
+
+
+
+
+SHOW_USER_INFO = {}
+def show_user_info():
+    show_user_info = {'search_by_id':False, 'user_id':None, 'panel_id':None, 
+                      'chat_id': None, 'config_name':None, 'sub_request':None,
+                      'data_limit_in':False, 'data_limit_de': False ,
+                      'expire_in':False, 'expire_de':False,
+                      'remove_service_money_back':False}
+    
+    return show_user_info
+
+
+
+    
+@bot.callback_query_handler(func=lambda call : call.data in ['show_user_info', 'show_user_info_other','back_from_show_user_info', 'back_from_show_user_info_config'] or call.data.startswith(('showuserinfo' , 'suichstatus', 'suigetconfiglink', 'suigetqrcodelink', 'suiincreasedatalimit', 'suidecreasedatalimit', 'suiincreaseexpire' ,'suidecreaseexpire','suirevokesubscription' , 'suiremovepaneluser','suiremoveservicemoneyback')))
+def watch_user_info(call):
+
+    if call.data == 'show_user_info':
+        if call.from_user.id not in SHOW_USER_INFO:
+            SHOW_USER_INFO[call.from_user.id] = show_user_info()
+
+        SHOW_USER_INFO[call.from_user.id]['search_by_id'] = True
+        SHOW_USER_INFO[call.from_user.id]['chat_id'] = call.message.chat.id
+        Text_1 = '👁برای مشاهده اطلاعات کاربر ایدی عدد کاربر مورد نظر را ارسال نمایید \n\n TO-CANCEL :  /cancel'
+        bot.edit_message_text(Text_1, call.message.chat.id , call.message.message_id)
+
+
+
+    if call.data == 'show_user_info_other':
+        if call.from_user.id not in SHOW_USER_INFO:
+            SHOW_USER_INFO[call.from_user.id] = show_user_info()
+
+        SHOW_USER_INFO[call.from_user.id]['search_by_id'] = True
+        SHOW_USER_INFO[call.from_user.id]['chat_id'] = call.message.chat.id
+        Text_2 = '👁برای مشاهده اطلاعات کاربر ایدی عدد کاربر مورد نظر را ارسال نمایید \n\n TO-CANCEL :  /cancel'
+        bot.delete_message(call.message.chat.id , call.message.message_id)
+        bot.send_message(call.message.chat.id , Text_2)
+        
+
+
+
+
+    if call.data.startswith('showuserinfo'):
+
+        call_data = call.data.split('.')
+        config_name = call_data[-1].removeprefix('(').removesuffix(')')
+        subscriptions_ = subscriptions.objects.get(user_subscription = config_name)
+        request_user_config = panelsapi.marzban(panel_id = int(subscriptions_.panel_id.pk)).get_user(username = str(config_name))
+
+        SHOW_USER_INFO[call.from_user.id]['sub_request'] = request_user_config
+        SHOW_USER_INFO[call.from_user.id]['panel_id'] =  subscriptions_.panel_id.pk
+        SHOW_USER_INFO[call.from_user.id]['config_name'] = config_name
+        
+        Text_3 = config_details(SHOW_USER_INFO, call)
+
+        bot.delete_message(call.message.chat.id , call.message.message_id)
+        bot.send_message(call.message.chat.id ,  Text_3,  parse_mode='HTML', reply_markup=BotKb.show_user_info_subscription(user_id=call_data[1] , request_dict=request_user_config))
+
+
+
+
+
+#//TODO add on_hold status 
+    if call.data.startswith('suichstatus'):
+        if call.from_user.id in SHOW_USER_INFO and len(SHOW_USER_INFO) >= 1 :
+            call_data = call.data.split('.')
+            panel_id = SHOW_USER_INFO[call.from_user.id]['panel_id']
+            request_dict = SHOW_USER_INFO[call.from_user.id]['sub_request']
+            config_name = call_data[-1].removeprefix('(').removesuffix(')')
+            inbounds = request_dict['inbounds']
+            expire_date = request_dict['expire']
+            data_limit = request_dict['data_limit']
+            status_config = 'disabled' if request_dict['status'] ==  'active' else  'active'
+            note = f'user status changed by {call.message.chat.id} - {datetime.datetime.now().strftime("%H:%M:%S-%Y/%m/%d")}'
+            try :
+                put_user_request = panelsapi.marzban(int(panel_id)).put_user(user_name=config_name, usernote=note,  expire_date_sui=expire_date,
+                                                                            date_limit_sui=data_limit, inbounds_sui=inbounds, status_sui=status_config)
+                SHOW_USER_INFO[call.from_user.id]['sub_request'] = put_user_request
+            except Exception as suichstatus_error :
+                print(f'An ERROR occured in [main.py - CHNAGE USER CONFIG STATUS - LINE 3904-3239 - CALL DATA  suichstatus] \n\n\t Error-msg :{suichstatus_error} ')
+            Text_4 = f"{config_details(SHOW_USER_INFO, call)}\n⚠️ وضعیت اشتراک کاربر تغییر کرد"
+            bot.edit_message_text(Text_4, call.message.chat.id, call.message.message_id, reply_markup=BotKb.show_user_info_subscription(user_id=call_data[1], request_dict=put_user_request))    
+
+
+
+
+
+    if call.data.startswith('suigetconfiglink'):
+        if call.from_user.id in SHOW_USER_INFO and len(SHOW_USER_INFO) >= 1 :
+            call_data = call.data.split('.')
+            request_dict = SHOW_USER_INFO[call.from_user.id]['sub_request']
+            if call_data[-1].removeprefix('(').removesuffix(')') == request_dict['username']:
+                Text_5 = f"🔗 لینک اشتراک : {request_dict['username']} \n📌- <code>{request_dict['subscription_url']}</code>"
+                bot.send_message(call.message.chat.id , Text_5)
+
+
+
+    if call.data.startswith('suigetqrcodelink'):
+        if call.from_user.id in SHOW_USER_INFO and len(SHOW_USER_INFO) >= 1 :
+            call_data = call.data.split('.')
+            request_dict = SHOW_USER_INFO[call.from_user.id]['sub_request']
+            if call_data[-1].removeprefix('(').removesuffix(')') == request_dict['username']:
+                qrcode_img = QRcode_maker.make_qrcode(request_dict['subscription_url'])
+                Text_6 = f"🔗 QRcode اشتراک :   {request_dict['username']}"
+                bot.send_photo(call.message.chat.id , photo=qrcode_img , caption=Text_6)
+
+
+
+
+    if call.data.startswith('suiincreasedatalimit'):
+        if call.from_user.id in SHOW_USER_INFO and len(SHOW_USER_INFO) >= 1 :
+            call_data = call.data.split('.')
+            request_dict = SHOW_USER_INFO[call.from_user.id]['sub_request']
+            if call_data[-1].removeprefix('(').removesuffix(')') == request_dict['username']:
+                SHOW_USER_INFO[call.from_user.id]['data_limit_in'] = True
+                Text_7 = f'مقدار حجمی را که میخواهید به اشتراک کاربر اضافه کنید را ارسال نمایید \n\n TO-CANCEL :  /cancel'
+                bot.edit_message_text(Text_7, call.message.chat.id , call.message.message_id)
+
+
+
+    if call.data.startswith('suidecreasedatalimit'):
+        if call.from_user.id in SHOW_USER_INFO and len(SHOW_USER_INFO) >= 1 :
+            call_data = call.data.split('.')
+            request_dict = SHOW_USER_INFO[call.from_user.id]['sub_request']
+            if call_data[-1].removeprefix('(').removesuffix(')') == request_dict['username']:
+                SHOW_USER_INFO[call.from_user.id]['data_limit_de'] = True
+                Text_7 = f'مقدار حجمی را که میخواهید از اشتراک کاربر کم کنید را ارسال نمایید \n\n TO-CANCEL :  /cancel'
+                bot.edit_message_text(Text_7, call.message.chat.id , call.message.message_id)
+
+
+
+
+    if call.data.startswith('suiincreaseexpire'):
+        if call.from_user.id in SHOW_USER_INFO and len(SHOW_USER_INFO) >= 1 :
+            call_data = call.data.split('.')
+            request_dict = SHOW_USER_INFO[call.from_user.id]['sub_request']
+            if call_data[-1].removeprefix('(').removesuffix(')') == request_dict['username']:
+                SHOW_USER_INFO[call.from_user.id]['expire_in'] = True
+                Text_7 = f'مقدار زمانی را که میخواهید به اشتراک کاربر اضافه کنید را ارسال نمایید \n\n TO-CANCEL :  /cancel'
+                bot.edit_message_text(Text_7, call.message.chat.id , call.message.message_id)
+
+
+
+    if call.data.startswith('suidecreaseexpire'):
+        if call.from_user.id in SHOW_USER_INFO and len(SHOW_USER_INFO) >= 1 :
+            call_data = call.data.split('.')
+            request_dict = SHOW_USER_INFO[call.from_user.id]['sub_request']
+            if call_data[-1].removeprefix('(').removesuffix(')') == request_dict['username']:
+                SHOW_USER_INFO[call.from_user.id]['expire_de'] = True
+                Text_7 = f'مقدار زمانی را که میخواهید از اشتراک کاربر کم کنید را ارسال نمایید \n\n TO-CANCEL :  /cancel'
+                bot.edit_message_text(Text_7, call.message.chat.id , call.message.message_id)
+
+
+
+
+    if call.data.startswith('suirevokesubscription'):
+        if call.from_user.id in SHOW_USER_INFO and len(SHOW_USER_INFO) >= 1 :
+            call_data = call.data.split('.')
+            request_dict = SHOW_USER_INFO[call.from_user.id]['sub_request']
+            if call_data[-1].removeprefix('(').removesuffix(')') == request_dict['username']:
+                revoke_sub = panelsapi.marzban(SHOW_USER_INFO[call.from_user.id]['panel_id']).revoke_sub(request_dict['username'])
+                SHOW_USER_INFO[call.from_user.id]['sub_request'] = revoke_sub
+                Text_8 = f"🔗 لینک جدید اشتراک : {request_dict['username']} \n📌- <code>{request_dict['subscription_url']}</code>"
+                bot.send_message(call.message.chat.id ,Text_8 )
+
+
+    if call.data.startswith('suiremovepaneluser'):
+        if call.from_user.id in SHOW_USER_INFO and len(SHOW_USER_INFO) >= 1 :
+            call_data = call.data.split('.')
+            request_dict = SHOW_USER_INFO[call.from_user.id]['sub_request']
+            if call_data[-1].removeprefix('(').removesuffix(')') == request_dict['username']:
+                    remove_user_from_panel = panelsapi.marzban(SHOW_USER_INFO[call.from_user.id]['panel_id']).remove_user(request_dict['username'])
+                    subscriptions.objects.get(user_subscription = request_dict['username']).delete()
+                    Text_9 = user_detaild(SHOW_USER_INFO[call.from_user.id]['user_id'])
+                    bot.delete_message(call.message.chat.id , call.message.message_id )
+                    user = users.objects.get(user_id = SHOW_USER_INFO[call.from_user.id]['user_id']).user_id
+                    userphoto = bot.get_user_profile_photos(user)
+                    if userphoto.total_count > 0:
+                        f_photo = userphoto.photos[0][0].file_id
+                        bot.send_photo(call.message.chat.id , f_photo, caption=Text_9, reply_markup=BotKb.show_service_status(user_id = user , show_user_info=True))
+                    else:
+                    
+                        bot.send_message(call.message.chat.id , Text_9 ,reply_markup=BotKb.show_service_status(user_id = user , show_user_info=True))
+
+
+
+
+    if call.data.startswith('suiremoveservicemoneyback'):
+        if call.from_user.id in SHOW_USER_INFO and len(SHOW_USER_INFO) >= 1 :
+            call_data = call.data.split('.')
+            request_dict = SHOW_USER_INFO[call.from_user.id]['sub_request']
+            if call_data[-1].removeprefix('(').removesuffix(')') == request_dict['username']:
+                SHOW_USER_INFO[call.from_user.id]['remove_service_money_back'] = True
+                Text_7 = f'لطفا مقدار وجهی را که میخواهید به حساب کاربر اضافه نمایید را وارد کنید\n\n TO-CANCEL :  /cancel'
+                bot.edit_message_text(Text_7, call.message.chat.id , call.message.message_id)
+
+
+
+
+
+
+
+
+    if call.data == 'back_from_show_user_info_config':
+        if call.from_user.id in SHOW_USER_INFO and len(SHOW_USER_INFO) >= 1 :
+
+            user_ = users.objects
+            user = user_.get(user_id = SHOW_USER_INFO[call.from_user.id]['user_id'])
+            userphoto = bot.get_user_profile_photos(user.user_id)
+            Text_14 = user_detaild(user.user_id)
+            bot.delete_message(call.message.chat.id , call.message.message_id)
+            if userphoto.total_count > 0:
+                f_photo = userphoto.photos[0][0].file_id
+                bot.send_photo(call.message.chat.id , f_photo, caption=Text_14, reply_markup=BotKb.show_service_status(user_id = user.user_id , show_user_info=True))
+            else:
+            
+                bot.send_message(call.message.chat.id , Text_14 ,reply_markup=BotKb.show_service_status(user_id = user.user_id , show_user_info=True))
+
+
+
+
+
+    if call.data =='back_from_show_user_info':
+        clear_dict(SHOW_USER_INFO , call.from_user.id)
+        Text_15 = 'به قسمت مدیریت یوزر ها خوش امدید'
+        bot.delete_message(call.message.chat.id , call.message.message_id)
+        bot.send_message(call.message.chat.id , Text_15 , reply_markup=BotKb.manage_users())
+
+
+
+
+
+
+
+
+@bot.message_handler(func= lambda message: (len(SHOW_USER_INFO) >= 1 and message.from_user.id in SHOW_USER_INFO and (SHOW_USER_INFO[message.from_user.id]['search_by_id'] or SHOW_USER_INFO[message.from_user.id]['data_limit_in'] or SHOW_USER_INFO[message.from_user.id]['data_limit_de'] or SHOW_USER_INFO[message.from_user.id]['expire_in'] or SHOW_USER_INFO[message.from_user.id]['expire_de'] or  SHOW_USER_INFO[message.from_user.id]['remove_service_money_back']) == True and   message.chat.id == SHOW_USER_INFO[message.from_user.id]['chat_id'] ) , content_types=['text','photo','video'])
+def handle_watch_user_info(message):
+
+    if SHOW_USER_INFO[message.from_user.id]['search_by_id'] == True:
+        if message.text == '/cancel' or message.text == '/cancel'.upper():
+            clear_dict(SHOW_USER_INFO , message.from_user.id)
+            Text_1 = 'به قسمت مدیریت یوزر ها خوش امدیدبه قسمت مدیریت یوزر ها خوش امدید'
+            bot.send_message(message.chat.id , Text_1, reply_markup=BotKb.manage_users())
+
+        else :
+            user_ = users.objects
+            if message.text.isdigit():
+                user = user_.get(user_id = message.text)
+
+                if user:
+
+                    userphoto = bot.get_user_profile_photos(user.user_id)
+                    Text_1 = user_detaild(user.user_id)
+
+                    if userphoto.total_count > 0:
+                        f_photo = userphoto.photos[0][0].file_id
+                        bot.send_photo(message.chat.id , f_photo, caption=Text_1, reply_markup=BotKb.show_service_status(user_id = user.user_id , show_user_info=True))
+                    else:
+                        bot.send_message(message.chat.id , Text_1 ,reply_markup=BotKb.show_service_status(user_id = user.user_id , show_user_info=True))
+                    
+                    SHOW_USER_INFO[message.from_user.id]['search_by_id'] = False
+                    SHOW_USER_INFO[message.from_user.id]['user_id'] = message.text
+                else:
+                    bot.send_message(message.chat.id , 'کاربری با این ایدی عددی وجود ندارید')
+            else:
+                bot.send_message(message.chat.id , 'فقط ایدی عددی مجازی میباشد')
+
+        return
+
+
+
+    if SHOW_USER_INFO[message.from_user.id]['data_limit_in'] == True:
+        if message.text == '/cancel' or message.text == '/cancel'.upper():
+            clear_dict(SHOW_USER_INFO , message.from_user.id)
+            Text_1 = 'به قسمت مدیریت یوزر ها خوش امدیدبه قسمت مدیریت یوزر ها خوش امدید'
+            bot.send_message(message.chat.id , Text_1, reply_markup=BotKb.manage_users())
+        else :
+            if message.text.isdigit():
+                info_dict = SHOW_USER_INFO[message.from_user.id]
+                request_dict = info_dict['sub_request']
+                data_limit = int(message.text) * 1024 * 1024 * 1024
+            
+                new_value = info_dict['sub_request']['data_limit'] + data_limit if info_dict['sub_request']['data_limit'] is not None else data_limit
+                note = f'value {message.text}GB increased  by {message.from_user.id} at {datetime.datetime.now().strftime("%H:%M:%S-%Y/%m/%d")}'
+                
+                data_limit_in_request = panelsapi.marzban(info_dict['panel_id']).put_user(user_name=request_dict['username'], usernote=note , expire_date_sui=request_dict['expire'], date_limit_sui=new_value , inbounds_sui= request_dict['inbounds'], status_sui=request_dict['status'])
+                SHOW_USER_INFO[message.from_user.id]['sub_request'] = data_limit_in_request
+                SHOW_USER_INFO[message.from_user.id]['data_limit_in'] = False
+                Text_2 = config_details(SHOW_USER_INFO , message)
+                
+                bot.send_message(message.chat.id , Text_2 , reply_markup=BotKb.show_user_info_subscription(user_id=info_dict['user_id'] , request_dict=SHOW_USER_INFO[message.from_user.id]['sub_request']))
+            else:
+                bot.send_message(message.chat.id , 'فقط  عدد مجاز میباشد')
+        return
+
+
+
+
+    if SHOW_USER_INFO[message.from_user.id]['data_limit_de'] == True:
+        if message.text == '/cancel' or message.text == '/cancel'.upper():
+            clear_dict(SHOW_USER_INFO , message.from_user.id)
+            Text_1 = 'به قسمت مدیریت یوزر ها خوش امدیدبه قسمت مدیریت یوزر ها خوش امدید'
+            bot.send_message(message.chat.id , Text_1, reply_markup=BotKb.manage_users())
+        else :
+            if message.text.isdigit():
+                info_dict = SHOW_USER_INFO[message.from_user.id]
+                request_dict = info_dict['sub_request']
+                data_limit = int(message.text) * 1024 * 1024 * 1024
+            
+                new_value = info_dict['sub_request']['data_limit'] - data_limit if info_dict['sub_request']['data_limit'] is not None else data_limit
+                note = f'value {message.text}GB decreased  by {message.from_user.id} at {datetime.datetime.now().strftime("%H:%M:%S-%Y/%m/%d")}'
+                
+                data_limit_de_request = panelsapi.marzban(info_dict['panel_id']).put_user(user_name=request_dict['username'], usernote=note , expire_date_sui=request_dict['expire'], date_limit_sui=new_value , inbounds_sui= request_dict['inbounds'], status_sui=request_dict['status'])
+                SHOW_USER_INFO[message.from_user.id]['sub_request'] = data_limit_de_request
+                SHOW_USER_INFO[message.from_user.id]['data_limit_de'] = False
+                Text_3 = config_details(SHOW_USER_INFO , message)
+                
+                bot.send_message(message.chat.id , Text_3 , reply_markup=BotKb.show_user_info_subscription(user_id=info_dict['user_id'] , request_dict=SHOW_USER_INFO[message.from_user.id]['sub_request']))
+            else:
+                bot.send_message(message.chat.id , 'فقط  عدد مجاز میباشد')
+        return
+
+
+
+
+
+
+    if SHOW_USER_INFO[message.from_user.id]['expire_in'] == True:
+        if message.text == '/cancel' or message.text == '/cancel'.upper():
+            clear_dict(SHOW_USER_INFO , message.from_user.id)
+            Text_1 = 'به قسمت مدیریت یوزر ها خوش امدیدبه قسمت مدیریت یوزر ها خوش امدید'
+            bot.send_message(message.chat.id , Text_1, reply_markup=BotKb.manage_users())
+        else :
+            if message.text.isdigit():
+                info_dict = SHOW_USER_INFO[message.from_user.id]
+                request_dict = info_dict['sub_request']
+                expire_fromtimestamp = datetime.datetime.fromtimestamp(request_dict['expire']) + datetime.timedelta(days= int(message.text))
+                new_expire = datetime.datetime.timestamp(expire_fromtimestamp)
+
+               
+                note = f'expire date {message.text}days increased  by {message.from_user.id} at {datetime.datetime.now().strftime("%H:%M:%S-%Y/%m/%d")}'
+                
+                expire_in_request = panelsapi.marzban(info_dict['panel_id']).put_user(user_name=request_dict['username'], usernote=note , expire_date_sui=new_expire, date_limit_sui=request_dict['data_limit'] , inbounds_sui= request_dict['inbounds'], status_sui=request_dict['status'])
+                SHOW_USER_INFO[message.from_user.id]['sub_request'] = expire_in_request
+                SHOW_USER_INFO[message.from_user.id]['expire_in'] = False
+                Text_4 = config_details(SHOW_USER_INFO , message)
+                
+                bot.send_message(message.chat.id , Text_4 , reply_markup=BotKb.show_user_info_subscription(user_id=info_dict['user_id'] , request_dict=SHOW_USER_INFO[message.from_user.id]['sub_request']))
+            else:
+                bot.send_message(message.chat.id , 'فقط  عدد مجاز میباشد')
+        return
+
+
+
+
+
+
+    if SHOW_USER_INFO[message.from_user.id]['expire_de'] == True:
+        if message.text == '/cancel' or message.text == '/cancel'.upper():
+            clear_dict(SHOW_USER_INFO , message.from_user.id)
+            Text_1 = 'به قسمت مدیریت یوزر ها خوش امدیدبه قسمت مدیریت یوزر ها خوش امدید'
+            bot.send_message(message.chat.id , Text_1, reply_markup=BotKb.manage_users())
+        else :
+            if message.text.isdigit():
+                info_dict = SHOW_USER_INFO[message.from_user.id]
+                request_dict = info_dict['sub_request']
+
+                expire_fromtimestamp = datetime.datetime.fromtimestamp(request_dict['expire']) - datetime.timedelta(days= int(message.text))
+                new_expire = datetime.datetime.timestamp(expire_fromtimestamp)
+               
+                note = f'expire date {message.text}days decreased  by {message.from_user.id} at {datetime.datetime.now().strftime("%H:%M:%S-%Y/%m/%d")}'
+                
+                expire_de_request = panelsapi.marzban(info_dict['panel_id']).put_user(user_name=request_dict['username'], usernote=note , expire_date_sui=new_expire, date_limit_sui=request_dict['data_limit'] , inbounds_sui= request_dict['inbounds'], status_sui=request_dict['status'])
+                
+                SHOW_USER_INFO[message.from_user.id]['sub_request'] = expire_de_request
+                
+                SHOW_USER_INFO[message.from_user.id]['expire_de'] = False
+                
+                Text_5 = config_details(SHOW_USER_INFO , message)
+                
+                
+                bot.send_message(message.chat.id , Text_5 , reply_markup=BotKb.show_user_info_subscription(user_id=info_dict['user_id'] , request_dict=SHOW_USER_INFO[message.from_user.id]['sub_request']))
+            else:
+                bot.send_message(message.chat.id , 'فقط  عدد مجاز میباشد')
+        return
+
+
+
+
+
+
+
+
+
+
+    if SHOW_USER_INFO[message.from_user.id]['remove_service_money_back'] == True:
+        if message.text == '/cancel' or message.text == '/cancel'.upper():
+            clear_dict(SHOW_USER_INFO , message.from_user.id)
+            Text_1 = 'به قسمت مدیریت یوزر ها خوش امدیدبه قسمت مدیریت یوزر ها خوش امدید'
+            bot.send_message(message.chat.id , Text_1, reply_markup=BotKb.manage_users())
+        else :
+            if message.text.isdigit():
+                info = SHOW_USER_INFO[message.from_user.id]
+                user_ = users.objects.get(user_id = SHOW_USER_INFO[message.from_user.id]['user_id'])
+                new_user_wallet = user_.user_wallet + int(message.text)
+                user_.user_wallet = new_user_wallet
+                user_.save()
+                remove_sub = subscriptions.objects.get(user_id = info['user_id'] , user_subscription = info['config_name']).delete()
+                remove_service = panelsapi.marzban(SHOW_USER_INFO[message.from_user.id]['panel_id']).remove_user(SHOW_USER_INFO[message.from_user.id]['config_name'])
+                Text_6 = f"کاربر گرامی اشتراک شما با نام {info['config_name']} از پنل و حساب کاربری شما حذف گردید \n و همچنین مبلغ {str(message.text)} به حساب کیف پول شما واریز گردید"
+                bot.send_message(info['user_id'] , Text_6)
+                Text_7 = f"اشتراک کاربر با نام {info['config_name']} از پنل و سرویس کاربر حذف گردید "
+                bot.send_message(message.chat.id , Text_7)
+                Text_8 = user_detaild(info['user_id'])
+                bot.send_message(message.chat.id , Text_8 , reply_markup=BotKb.show_service_status(info['user_id'], show_user_info=True))
+                SHOW_USER_INFO[message.from_user.id]['remove_service_money_back'] = False
+            else:
+                bot.send_message(message.chat.id , 'فقط  عدد مجاز میباشد')
+        return
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

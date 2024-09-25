@@ -105,7 +105,7 @@ class Command(BaseCommand):
                         break 
                 time.sleep(2)
                 clear_console()
-                
+                """"""
                 
                 self.stdout.write(colorama.Fore.GREEN + '--! Bot is Running !--' + colorama.Style.RESET_ALL)
                 main.bot.infinity_polling()
@@ -124,15 +124,11 @@ def write_token(token):
 
 
 
-
-
 def write_db_name(dbname , dbuser=None, dbpass=None):
     with open(os.getcwd()+'/mainrobot/management/commands/'+'dbinfo.py' ,'w+') as f:
             f.write(f'db=["{dbname}"]')
             f.close()
             return
-
-
 
 
 
