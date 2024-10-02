@@ -70,7 +70,7 @@ class Command(BaseCommand):
                     
                 admins.objects.create(user_id = get_user_id , is_admin = owner , is_owner = owner , password=get_user_passwd , admin_name ='Owner' , acc_botmanagment=0, acc_panels=0, acc_products=0, acc_admins=0 , acc_users=0, acc_staticts=0)
                 
-                botsettings.objects.create(wallet_pay = 0, kartbkart_pay=0, forcechjoin=0, moneyusrtousr=0, irnumber=0)
+                botsettings.objects.create(wallet_pay = 0 , kartbkart_pay=0 , forcechjoin=0 , moneyusrtousr=0 , irnumber=0 , newusers_notf=0 , walletcharge_notf=0 , moneyusrtousr_notf=0 , buyservice_notf=0 , tamdidservice_notf=0 )
                 
                 self.stdout.write(self.style.SUCCESS('Successfully !! Owner bot added to db'))
                 
@@ -87,7 +87,6 @@ class Command(BaseCommand):
                 self.stdout.write(colorama.Fore.GREEN + '--! Bot is Running !--' + colorama.Style.RESET_ALL)
 
                 main.bot.infinity_polling()
-
                 #main.bot.polling(non_stop=True)
 
 
@@ -124,11 +123,15 @@ def write_token(token):
 
 
 
+
+
 def write_db_name(dbname , dbuser=None, dbpass=None):
     with open(os.getcwd()+'/mainrobot/management/commands/'+'dbinfo.py' ,'w+') as f:
             f.write(f'db=["{dbname}"]')
             f.close()
             return
+
+
 
 
 

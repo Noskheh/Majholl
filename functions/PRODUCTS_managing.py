@@ -17,7 +17,7 @@ def add_product_database(call , BOT , product_dict , inbouds_dict):
                                         panel_id=product_dict['Panel_Id'] , pro_id_str=product_id_STRgenerated ,
                                         sort_id=max(products_obejcts)+1 if products_obejcts else 1 , inbounds_selected= json.dumps(inbouds_dict , indent=1))
         product_dict.update({key : '' for key in product_dict})
-        Text_2='✅پنل با موفقیت به دیتابیس اضافه شد'
+        Text_2='✅محصول با موفقیت اضافه شد'
         BOT.edit_message_text(Text_2 , call.message.chat.id , call.message.message_id , reply_markup=BotKb.product_management_menu_in_admin_side())
                 
     except Exception as product_creation:
@@ -36,10 +36,10 @@ def remove_product_database(call ,  BOT , product_id , panel_id_dict):
         product_to_remove.delete()
     except Exception as remove_product:
         print(f'Error during removing product \n Error_msg : {remove_product}')
-        Text_1=f'هنگام حذف کردن محصول از دیتابیس مشکلی بوجود امد \n{remove_product}'
+        Text_1=f'هنگام حذف کردن محصول  مشکلی بوجود امد \n{remove_product}'
         BOT.send_message(call.message.chat.id , Text_1 ,reply_markup=BotKb.product_managemet_remove_products(panel_pk=panel_id_dict['Panel_Id']))
     else:
-        Text_2=f'محصول با موفقیت از دیتابیس پاک شد ✅\n\n  نام محصول حذف شده  : {pro_name}'
+        Text_2=f'محصول با موفقیت  پاک شد ✅\n\n  نام محصول حذف شده  : {pro_name}'
         BOT.edit_message_text(Text_2 ,call.message.chat.id ,call.message.message_id , reply_markup=BotKb.product_managemet_remove_products(panel_pk=panel_id_dict['Panel_Id']))
             
 

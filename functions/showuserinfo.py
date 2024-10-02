@@ -1,15 +1,22 @@
 import datetime , jdatetime , panelsapi
 from mainrobot.models import users ,subscriptions , payments , inovices
 from django.db.models import Count 
+from keybuttons import BotkeyBoard as BotKb
 
-def user_detaild (user_id):
+
+
+
+
+
+def user_detaild (user_id , bot = None , message = None):
     user_ = users.objects
     subscriptions_ = subscriptions.objects
     payments_ = payments.objects
-
+    user = user_.get(user_id = user_id)
+    userphoto = bot.get_user_profile_photos(user.user_id)    
     try : 
-        user = user_.get(user_id = user_id)
-                    
+       
+                
         number_subscription = subscriptions_.filter(user_id = user.user_id).aggregate(Count('id'))['id__count']
                         
 
@@ -35,10 +42,24 @@ def user_detaild (user_id):
   • تعداد تراکنش ها  : {str(amount_transaction) + " عدد" if amount_transaction else 'هیچ تراکنشی وجود ندارد'} 
   ↲ اشتراک ها :‌
 
-"""
-        return Text_1
+""" 
+            
+
+
+        if userphoto.total_count > 0:
+            f_photo = userphoto.photos[0][0].file_id
+            bot.send_photo(message.chat.id , f_photo, caption=Text_1, reply_markup=BotKb.show_service_status(user_id = user.user_id , show_user_info=True))
+        else:
+            bot.send_message(message.chat.id , Text_1 ,reply_markup=BotKb.show_service_status(user_id = user.user_id , show_user_info=True))
+                    
+
     except Exception as error_user_detaild:
-        print(f'Error while finding user_sub \n error-msg : {error_user_detaild}')
+        Text_2 = 'اطلاعاتی از عملکرد این کاربر در سیستم وجود ندارد'
+        if userphoto.total_count > 0:
+            f_photo = userphoto.photos[0][0].file_id
+            bot.send_photo(message.chat.id , f_photo, caption=Text_2 , reply_markup=BotKb.show_service_status(user_id = user.user_id , show_user_info=True))
+        else:
+            bot.send_message(message.chat.id , Text_2 , reply_markup=BotKb.show_service_status(user_id = user.user_id , show_user_info=True))
 
 
 
@@ -88,7 +109,7 @@ def config_details(SHOW_USER_INFO , call=None , message=None):
 
             if info['sub_request']['data_limit']  is not None :
 
-                all_expire_date = jdatetime.datetime.fromtimestamp(info['sub_request']['expire'])
+                all_expire_date = jdatetime.datetime.fromtimestamp(info['sub_request']['expire']).strftime('%H:%M:%S - %Y/%m/%d')
             else :
                 all_expire_date = 'این اشتراک لایف تایم میباشد'
 
@@ -98,11 +119,11 @@ def config_details(SHOW_USER_INFO , call=None , message=None):
 – #️⃣ایدی عددی خریدار : <code>{info['user_id']}</code>
 
 ● 🛍نام محصول : {product_info}
-● 🎛پنل متصل شده : {panel_info}
+● ‌‌🎛پنل متصل شده : {panel_info}
 ● 💰مبلغ پرداختی : {format(payment_amount , ',')} تومان
 ● 📆آخرین اتصال : {str(last_time_online_jeo)}
 ● 🧮زمان باقی مانده : {remianing_datetime} روز
-● 📅 زمان کلی : {str(all_expire_date)}
+● 📅تاریخ انقضا : {str(all_expire_date)}
 ● ⌛️حجم مصرف شده : {str(used_traffic)} Gb
 ● 🔋 حجم کلی :‌ {str(all_data_limit)} Gb
 .

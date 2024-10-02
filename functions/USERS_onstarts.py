@@ -1,19 +1,47 @@
-from mainrobot.models import users , channels , botsettings
+from mainrobot.models import users , admins , channels , botsettings
 from keybuttons import BotkeyBoard as botkb
-import re
+import re , jdatetime
+
+
+
 #handles welcome functions
+
+
+
 #= check user existence
-def CHECK_USER_EXITENCE(UserId , UserFirstName , UserLastName , UserUserName , UserWallet):
+def CHECK_USER_EXITENCE(UserId , UserFirstName , UserLastName , UserUserName , UserWallet , bot):
     try: 
-        User_ = users.objects.get(user_id = UserId)
-        if not User_ :
-            return User_ , False   
+        User_check = users.objects.get(user_id = UserId)
+        if not User_check :
+            return User_check , False   
         
     except users.DoesNotExist:
-        User_ = users.objects.create(first_name=UserFirstName , last_name=UserLastName , user_id=UserId , username=UserUserName ,
-                                    user_wallet=UserWallet) 
-        
-        return User_ , True 
+        User_create = users.objects.create(first_name=UserFirstName , last_name=UserLastName ,
+                                           user_id=UserId , username=UserUserName , user_wallet=UserWallet) 
+        Text_notf = f"""
+🎊 یک کاربر جدید به ربات اضافه شد
+
+▼ ایدی عددی : ‌{UserId}
+ • نام کاربری :  @{UserUserName}
+ • تاریخ عضویت‌ : {jdatetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}
+.
+
+"""
+        if botsettings.objects.values('newusers_notf')[0]['newusers_notf'] == 1 :
+            logchannel = channels.objects.filter(ch_usage = 'logc')
+            if logchannel:
+                if logchannel[0].ch_status == 1  :
+                    bot.send_message(logchannel[0].channel_id , Text_notf)
+            else :
+                admins_to_notf = admins.objects.all()
+                for id in admins_to_notf:
+                    bot.send_message(id.user_id , Text_notf)
+
+
+        return User_create , True 
+
+
+
 
 
 
@@ -27,7 +55,7 @@ def CHECK_USER_EXITENCE(UserId , UserFirstName , UserLastName , UserUserName , U
 #= check user in channel or not
 def FORCE_JOIN_CHANNEL(UserId, Bot):
     Users_ = users.objects.get(user_id=UserId)
-    Channels_ = channels.objects.all()
+    Channels_ = channels.objects.filter(ch_usage = 'fjch').all()
     botsettings_forcech = botsettings.objects.all()[0].forcechjoin
     state = {}
     
@@ -46,6 +74,8 @@ def FORCE_JOIN_CHANNEL(UserId, Bot):
                     return botkb.load_channels(Bot, UserId)
     
     return True  # User is a member of all required channels or force join is disabled
+
+
 
 
 # check user block or unblock status

@@ -70,12 +70,13 @@ class marzban:
         if product_id is not None :
             product_ = products.objects.get(id = product_id)
             inbounds_database = json.loads(product_.inbounds_selected)
-            data_limit = float(product_.data_limit)
+            data_limit = float(product_.data_limit) * 1024 * 1024 * 1024
             expire_time = datetime.datetime.now() + datetime.timedelta(days = product_.expire_date)
             expire_time_timstamp = datetime.datetime.timestamp(expire_time)
+            status_config = 'active'.strip()
         else : 
             expire_time_timstamp = expire_date_sui
-            data_limit = date_limit_sui
+            data_limit = date_limit_sui  
             inbounds = inbounds_sui
             uuidconfig = uuid_sui 
             status_config = status_sui.strip()  

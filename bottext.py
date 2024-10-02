@@ -28,11 +28,11 @@ def product_info_msg(product_info  , tamdid:bool=False):
 
 ┐<b>👤 نام کاربری</b>: <code>{product_info['config_name']}</code>
 
-┊─<b>🌐  نام سرور</b>:‌ <code>{panel_name}</code>
-┊─<b>📎  نام محصول</b>: <code>{product_info['product_name']}</code>
-┊─<b>⌛️  زمان محصول</b>: <code>{product_info['expire_date']}</code> روز 
-┊─<b>🔋  حجم محصول</b>: <code>{product_info['data_limit']}</code> گیگ 
-┊─<b>💸  قیمت محصول</b>: <code>{format(product_info['pro_cost'] , ',')}</code> تومان
+┊─<b>🌐  نام سرور</b>:‌<code>{panel_name}</code>
+┊─<b>📎  نام محصول</b>:<code>{product_info['product_name']}</code>
+┊─<b>⌛️  زمان محصول</b>:<code>{product_info['expire_date']}</code> روز 
+┊─<b>🔋  حجم محصول</b>:<code>{product_info['data_limit']}</code> گیگ 
+┊─<b>💸  قیمت محصول</b>:<code>{format(product_info['pro_cost'] , ',')}</code> تومان
 
 ┘ <b> در صورت تایید گزینه ( تایید محصول ) را زده و در صورت عدم تایید گزینه بازگشت را بزنید </b>
 
@@ -112,9 +112,9 @@ def buy_service_section_card_to_card_msg(cost):
                
 ┐  💳شماره کارت :‌  
                     {(",".join(kard))}
-─ ✍🏻 نام صاحب کارت : {bank_owner}
+─ ✍🏻 نام صاحب کارت : {bank_owner if  bank_owner is not None else ''}
 
- ┘  🏦بانک عامل : {bank_name}
+ ┘  🏦بانک عامل : {bank_name if bank_name is not None else ''}
 
 ▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐▐
 - لطفا از اسپم کردن پرهیز نمایید⚠️
@@ -154,10 +154,10 @@ def send_user_buy_request_to_admins(user_basket , user_info , panel_name , tamdi
 
 ┐🧷نام  کاربری  :  {user_info.first_name } {'' if not user_info.last_name else user_info.last_name}
 
-┊──👤: ایدی عددی : {user_info.user_id}
-┊──🆔 یوزرنیم تلگرام :‌ @‌{user_info.username}
-┊──💰موجودی کیف پول :‌ {format(user_info.user_wallet, ",")} تومان
-┊── 💸مبلغ خرید : {user_basket['pro_cost']} تومان
+┊──👤 ایدی عددی : {user_info.user_id}
+┊──#️⃣ یوزرنیم تلگرام :‌ @‌{user_info.username}
+┊──💰موجودی کیف پول :‌ {format(int(user_info.user_wallet) , ",")} تومان
+┊──💸مبلغ خرید : {user_basket['pro_cost']} تومان
 ┊──🔗نام محصول : {user_basket['product_name']}
 
 ┘🔖 نام سرور : {panel_name}
@@ -172,10 +172,10 @@ def send_user_buy_request_to_admins(user_basket , user_info , panel_name , tamdi
 
 ┐🧷نام  کاربری  :  {user_info.first_name } {'' if not user_info.last_name else user_info.last_name}
 
-┊──👤: ایدی عددی : {user_info.user_id}
-┊──🆔 یوزرنیم تلگرام :‌ @‌{user_info.username}
-┊──💰موجودی کیف پول :‌ {format(user_info.user_wallet, ",")} تومان
-┊── 💸مبلغ خرید : {user_basket['pro_cost']} تومان
+┊──👤 ایدی عددی : {user_info.user_id}
+┊──#️⃣ یوزرنیم تلگرام :‌ @‌{user_info.username}
+┊──💰موجودی کیف پول :‌ {format(int(user_info.user_wallet) , ",")} تومان
+┊──💸مبلغ خرید : {user_basket['pro_cost']} تومان
 ┊──🔗نام محصول : {user_basket['product_name']}
 
 ┘🔖 نام سرور : {panel_name}

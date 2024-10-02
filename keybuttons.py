@@ -110,23 +110,255 @@ class BotkeyBoard:
 
 
 
-# ------------------------- Bot-Settings -----------------------------------------------------------------------------------
 
+
+
+
+
+
+
+
+
+
+
+
+# ------------------------------------------------------------------------------------------
+# ------------------------- Bot-Settings --------------------------------------------------------------------------------------->
+# ------------------------------------------------------------------------------------------
     @staticmethod
     def bot_management():
         keyboard = InlineKeyboardMarkup()
-        bot_management_buttons = [[('🔒مدیریت جوین اجباری ' , 'manage_force_channel_join') , ('💸 مدیریت نحوه پرداخت' , 'manage_bank_cards')]]
+        botmangement_rawbuttons =[
+                                  [('☑️✅' , 'bot_enable_disable') , ('🤖 - وضعیت ربات ' , 'bot_enable_disable')],
+                                  [('🔒مدیریت جوین اجباری ' , 'manage_force_channel_join') , ('💸 مدیریت نحوه پرداخت' , 'manage_bank_cards')],
+                                  [('📄مدیریت ارسال گزارشات' , 'manage_sending_logs')],
+                                  [('✤ - بازگشت به منوی قبلی - ✤' , 'back_to_management_menu')],
+                                ]
 
-        row_buttons = []
-
-        for row in bot_management_buttons:
+        for row in botmangement_rawbuttons:
+            buttons_list =[]
             for text , data in row:
-                buttons = InlineKeyboardButton(text=text , callback_data=data)
-                row_buttons.append(buttons)
-            keyboard.add(*row_buttons)
-        back_button = InlineKeyboardButton('بازگشت ',callback_data='back_to_management_menu')
-        keyboard.add(back_button)   
+                button = InlineKeyboardButton(text = text , callback_data = data)
+                buttons_list.append(button)
+            
+            keyboard.add(*buttons_list)
+  
         return keyboard
+
+
+# ------------------------- < Payment-Section > 
+    @staticmethod 
+    def manage_howtopay():
+        keyboard = InlineKeyboardMarkup()
+        botsettings_ = botsettings.objects.values('wallet_pay' , 'kartbkart_pay' , 'moneyusrtousr')[0]
+        status_txt = lambda botstatus : '❌غیر فعال' if botstatus == 0 else  '✅فعال'
+
+        botsettings_wallet_pay = status_txt(botsettings_['wallet_pay'])
+        botsettings_kartbkart_pay = status_txt(botsettings_['kartbkart_pay'])
+        botsettings_mineyusrtousr = status_txt(botsettings_['moneyusrtousr'])
+
+        payments_rawbuttons =[
+                              [(botsettings_wallet_pay , 'walletpay_status') , ('👝 - پرداخت با کیف پول','walletpay_status')],
+                              [(botsettings_kartbkart_pay , 'kartbkart_status') , ('💳 - پرداخت با کارت به کارت' , 'kartbkart_status')],
+                              [(botsettings_mineyusrtousr , 'moneyusrtousr_status') , ('👥 - انتقال وجه یوزر به یوزر' , 'moneyusrtousr_status')],
+                              [('⚙️ مدیریت شماره کارت‌‌ها ' , 'manage_shomare_kart')],
+                              [('✤ - بازگشت به منوی قبلی - ✤' , 'back_from_mange_howtopay')] 
+                             ]
+
+        for row in payments_rawbuttons:
+            buttons_list =[]
+            for text , data in row:
+                button = InlineKeyboardButton(text = text , callback_data = data)
+                buttons_list.append(button)
+
+            keyboard.add(*buttons_list)
+
+        return keyboard    
+    
+
+# ------------------------- < ManageShomareKart-Section > 
+    @staticmethod
+    def manage_shomarekart():
+        keyboard = InlineKeyboardMarkup()
+        shomarekart_all = shomarekart.objects.all()
+        
+        manageshomarekart_rawbuttons =[[('مدیریت کارت' ,'mangene') , ('شماره کارت','kart_number') , ('نام بانک' , 'bank_name')],]
+        
+        for i in shomarekart_all:
+            button_karts =[('⚙️' , f'mkart_{str(i.bank_card)}') , (f'{str(i.bank_card)}' , f'mkart_{str(i.bank_card)}') , (f'{str(i.bank_name)}' , f'mkart_{str(i.bank_card)}')]
+            manageshomarekart_rawbuttons.append(button_karts)
+    
+        finall_button =[
+                        [('➕ اضافه کردن شماره کارت جدید' , 'add_new_kart_number')],
+                        [('✤ - بازگشت به منوی قبلی - ✤' , 'back_from_manage_shomare_karts')],
+                       ]
+
+        manageshomarekart_rawbuttons.extend(finall_button)
+
+        for row in manageshomarekart_rawbuttons:
+            buttons_list =[]
+            for text , data in row:
+                button = InlineKeyboardButton(text = text , callback_data = data)
+                buttons_list.append(button)
+
+            keyboard.add(*buttons_list)
+        
+        return keyboard
+
+
+
+
+    @staticmethod 
+    def manage_kart(kart_number):
+        keyboard = InlineKeyboardMarkup()
+        shomarekart_loads = shomarekart.objects.get(bank_card= int(kart_number))
+
+        kart_status = '✅فعال کردن ' if shomarekart_loads.bank_status == 0 else '❌غیرفعال کردن'
+        kart_inuse = '👍🏻استفاده در پرداخت ها' if shomarekart_loads.bank_inmsg == 0 else '👎🏻عدم استفاده در پرداخت‌ها'
+
+        buttons =[
+                   [(kart_inuse , f'userin_pays_{str(kart_number)}') , (kart_status , f'chstatus_shomarekart_{str(kart_number)}')],
+                   [('❌حذف شماره کارت' , f'rmkart_{str(kart_number)}')],
+                   [('✤ - بازگشت به منوی قبلی - ✤' ,'back_from_manage_shomare_kart')]
+                  ]
+                     
+        for row in buttons:
+            buttons_list =[]
+            for text , data in row:
+                button = InlineKeyboardButton(text = text , callback_data = data)
+                buttons_list.append(button)
+
+            keyboard.add(*buttons_list)
+
+        return keyboard
+    
+
+
+# ------------------------- < JoinChannel-Section > 
+    @staticmethod 
+    def manage_joinch():
+        keyboard = InlineKeyboardMarkup()
+        botsettings_forcechjoin = botsettings.objects.values('forcechjoin')[0]
+        status_txt = lambda botstatus : '❌غیر فعال' if botstatus == 0 else  '✅فعال'
+
+        forcechjoin_rawbuttons =[
+                                  [(status_txt(botsettings_forcechjoin['forcechjoin']) , 'forcechjoin') , ('🔐 - جوین اجباری' , 'forcechjoin')],
+                                  [('⚙️مدیریت کردن چنل‌ها' , 'manage_forcejoin')],\
+                                  [('✤ - بازگشت به منوی قبلی - ✤' , 'back_from_manage_force_ch')]
+                                ]
+        
+        for row in forcechjoin_rawbuttons:
+            buttons_list =[]
+            for text , data in row:
+                button = InlineKeyboardButton(text = text , callback_data = data)
+                buttons_list.append(button)
+
+            keyboard.add(*buttons_list)
+
+        return keyboard
+    
+
+
+    @staticmethod
+    def manage_channels():
+        keyboard = InlineKeyboardMarkup()
+        channels_forcejoin = channels.objects.filter(ch_usage= 'fjch').all()
+        
+        managefch_rawbuttons =[[('مدیریت چنل' , 'mangene') , ('ایدی چنل' , 'ch_url') , ('نام چنل' , 'ch_name')],]
+
+        for i in channels_forcejoin:
+            buttons = [('⚙️' , f'mfch_{str(i.id)}') , (i.channel_url or i.channel_id ,  f'mfch_{str(i.id)}') , (i.channel_name , f'mfch_{str(i.id)}')]
+            managefch_rawbuttons.append(buttons)
+
+        finall_button = [
+                         [('➕اضافه کردن چنل جدید' , 'add_new_force_channel')],
+                         [('✤ - بازگشت به منوی قبلی - ✤' ,'back_from_managing_force_ch')]
+                        ]
+        managefch_rawbuttons.extend(finall_button)
+
+        for row in managefch_rawbuttons:
+            buttons_list = []
+            for text , data in row:
+                button = InlineKeyboardButton(text = text , callback_data = data)
+                buttons_list.append(button)
+
+            keyboard.add(*buttons_list)
+
+        return keyboard
+
+
+
+    @staticmethod 
+    def manage_ch(channel_id):
+        keyboard = InlineKeyboardMarkup()
+        channel_loads = channels.objects.get(id = int(channel_id))
+        status_txt = lambda botstatus : '❌غیر فعال' if botstatus == 0 else  '✅فعال'
+
+        buttons = [
+                    [('❌حذف کردن چنل ' , f'rm_chf_{str(channel_loads.id)}') , (status_txt(channel_loads.ch_status) , f'status_chf_{str(channel_loads.id)}')],
+                    [('✤ - بازگشت به منوی قبلی - ✤' , 'back_from_manage_channel')]
+                   ]
+
+        for row in buttons:
+            button_list =[]
+            for text , data in row:
+                button = InlineKeyboardButton(text = text , callback_data = data)
+                button_list.append(button)
+
+            keyboard.add(*button_list)
+
+        return keyboard
+    
+# ------------------------- < logs-Section > 
+    @staticmethod 
+    def manage_logs():
+        keyboard = InlineKeyboardMarkup()
+        status_txt = lambda botstatus : '❌غیر فعال' if botstatus == 0 else  '✅فعال'
+        botsettings_logs = botsettings.objects.values('newusers_notf' , 'walletcharge_notf' , 'moneyusrtousr_notf' , 'buyservice_notf' , 'tamdidservice_notf')[0]
+        channel_log = channels.objects.filter(ch_usage = 'logc')
+        chlog = channel_log.all().first()
+        botsettingslogs_rawbuttons =[
+                                      [(status_txt(botsettings_logs['newusers_notf']) , 'new_user_joined_notf') , ('اعلان کاربر جدید ' , 'new_user_joined_notf')], 
+                                      [(status_txt(botsettings_logs['walletcharge_notf']) , 'charging_wallet_notf') , ('اعلان شارژ کیف پول' , 'charging_wallet_notf')], 
+                                      [(status_txt(botsettings_logs['moneyusrtousr_notf']) , 'transfer_money_touser_notf') , ('اعلان انتقال وجه کاربر به کاربر' , 'transfer_money_touser_notf')], 
+                                      [(status_txt(botsettings_logs['buyservice_notf']) , 'buy_new_service_notf') , ('اعلان خرید اشتراک جدید' , 'buy_new_service_notf')], 
+                                      [(status_txt(botsettings_logs['tamdidservice_notf']) , 'tamdid_service_notf') , ('اعلان تمدید اشتراک' , 'tamdid_service_notf')],
+                                      [('✤ - بازگشت به منوی قبلی - ✤' , 'back_from_manage_logs')]
+                                    ]
+        
+
+        if channel_log.count() <1:
+            botsettingslogs_rawbuttons.insert(len(botsettingslogs_rawbuttons) - 1  ,  [('➕اضافه کردن چنل وقایع' , 'add_new_log_channel')],)
+        #else :
+        #    botsettingslogs_rawbuttons.insert(len(botsettingslogs_rawbuttons) - 1 , [(status_txt(chlog.ch_status) , 'manage_log_channel') , (f'{chlog.channel_name}' , 'manage_log_channel')],)
+
+
+        for row in botsettingslogs_rawbuttons:
+            buttons_list =[]
+            for text , data in row:
+                button = InlineKeyboardButton(text = text , callback_data = data)
+                buttons_list.append(button)
+            keyboard.add(*buttons_list)
+
+        return keyboard 
+
+# //TODO اضافه کردن لیست چنل های لاگ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ------------------------- User-Settings ----------------------------------------------------------------------------------
@@ -163,7 +395,7 @@ class BotkeyBoard:
     @staticmethod
     def load_channels(bot , Userid):
         keyboard = InlineKeyboardMarkup()
-        channels_ = channels.objects.all()
+        channels_ = channels.objects.filter(ch_usage = 'fjch').all()
         channel_list = []
         for i in channels_:
             user_joined = bot.get_chat_member(i.channel_url or i.channel_id  , Userid).status
@@ -274,7 +506,7 @@ class BotkeyBoard:
             for i in panel_:
                 panel_status_out='🟢'  if i.panel_status==1 else  '🔴'
                 panel_id=f'manageing_panel_{i.id}'
-                manage_button_bottom_list=[('⚙️' , panel_id) , (panel_status_out , panel_id ) , (i.panel_name , panel_id )]
+                manage_button_bottom_list=[('⚙️' , panel_id) , (panel_status_out , panel_id ) , (i.panel_name , panel_id)]
                 panels_to_list.append(manage_button_bottom_list)
 
             for i in panels_to_list:
@@ -305,7 +537,7 @@ class BotkeyBoard:
 
             selected_panel_list=[
                                 [(str(panel_status_out) , f'panel_status_{i.id}' ) , ('وضعیت پنل' , 'panel_status')] ,
-                                [(str(i.panel_name) , f'panel_name_{i.id}_{i.panel_name}') , ('نام پنل ' , 'panel_name')] , 
+                                [(str(i.panel_name) , f'panel_name_{i.id}_{i.panel_name}') , ('نام پنل ' , f'panel_name_{i.id}_{i.panel_name}')] , 
                                 [(str(panel_url_shows) , f'panel_url_{i.id}_{panel_url_shows}') , ('ادرس پنل' , 'panel_url')] ,
                                 [(panel_username, f'panel_username_{i.id}_{username}') , ('┐ یورزنیم پنل ' , f'view_username_{i.id}')] ,
                                 [(panel_password , f"panel_password_{i.id}_{passwd}") , ('┘ پسوورد پنل ' , f'view_password_{i.id}')] ,
@@ -807,7 +1039,7 @@ class BotkeyBoard:
         user_ = users.objects.get(user_id = user_id)
         subscriptions_ = subscriptions.objects.filter(user_id = user_)
         if subscriptions_.count() >= 1:
-            for i in subscriptions_:
+            for i in subscriptions_.order_by('date_created').reverse():
                 buttons = InlineKeyboardButton(text= i.user_subscription , callback_data= f'Tamidi:{i.user_subscription}:{i.user_id.user_id}')
                 keyboard.add(buttons)
         else :
@@ -1100,186 +1332,6 @@ class BotkeyBoard:
 
 
 
-# ------------------------- Karts-Section -----------------------------------------------------------------------------------
-
-
-    @staticmethod 
-    def manage_howtopay():
-        status_txt = lambda botstatus : '❌غیر فعال' if botstatus == 0 else  '✅فعال'
-        keyboard = InlineKeyboardMarkup()
-
-        botsettings_ = botsettings.objects.all()
-        for i in botsettings_:
-            raw_buttons = [
-                        [(status_txt(i.wallet_pay), 'walletpay_status') , ('پرداخت با کیف پول ','walletpay_status')],
-                        [(status_txt(i.kartbkart_pay) , 'kartbkart_status'), ('پرداخت با کارت به کارت' , 'kartbkart_status')],
-                        [(status_txt(i.moneyusrtousr) , 'moneyusrtousr_status'), ('انتقال وجه یوزر به یوزر' , 'moneyusrtousr_status')],
-                        ]
-
-        buttons = []
-        for i in raw_buttons:
-            for text , data in i:
-                button = InlineKeyboardButton(text=text , callback_data=data)
-                buttons.append(button)
-        keyboard.add(*buttons , row_width=2)
-
-        button_manage_shomare_kart = InlineKeyboardButton('مدیریت شماره کارت ها ' , callback_data='manage_shomare_kart')
-        back_button = InlineKeyboardButton('✤ - بازگشت به منوی قبلی - ✤' , callback_data='back_from_mange_howtopay')
-        keyboard.add(button_manage_shomare_kart , back_button , row_width=1)
-
-
-        return keyboard    
-    
-
-    
-    @staticmethod
-    def manage_shomarekart():
-        keyboard = InlineKeyboardMarkup()
-        shomarekart_ = shomarekart.objects.all()
-        
-        raw_top_buttons = [[('مدیریت کارت' ,'mangene') , ('شماره کارت','kart_number') , ('نام بانک' , 'bank_name')]]
-
-        top_buttons =[]
-        for i in raw_top_buttons:
-            for text , data in i:
-                button = InlineKeyboardButton(text=text , callback_data=data )
-                top_buttons.append(button)
-        keyboard.add(*top_buttons , row_width=3)
-
-
-        raw_bottom_buttons = []
-        for i in shomarekart_:
-            button = [('⚙️' , f'mkart_{str(i.bank_card)}') , (f'{str(i.bank_card)}' , f'mkart_{str(i.bank_card)}') , (f'{str(i.bank_name)}' , f'mkart_{str(i.bank_card)}')]
-            raw_bottom_buttons.append(button)
-        
-
-        
-        for i in raw_bottom_buttons:
-            bottom_buttons = []
-            for text , data in i:
-                button = InlineKeyboardButton(text=text , callback_data=data)
-                bottom_buttons.append(button)
-
-            keyboard.add(*bottom_buttons, row_width=3)
-        
-
-        add_shomare_kart = InlineKeyboardButton('اضافه کردن شماره کارت جدید' , callback_data='add_new_kart_number')
-        back_button = InlineKeyboardButton('✤ - بازگشت به منوی قبلی - ✤' , callback_data='back_from_manage_shomare_karts')
-        keyboard.add(add_shomare_kart, back_button , row_width=1)
-
-        return keyboard
-
-
-
-
-    @staticmethod 
-    def manage_kart(kart_number):
-        shomarekart_ = shomarekart.objects.get(bank_card= int(kart_number))
-        status = 'فعال کردن' if shomarekart_.bank_status == 0 else 'غیر فعال کردن'
-        use_status = 'استفاده در پرداخت ها' if shomarekart_.bank_inmsg == 0 else 'عدم استفاده در پرداخت ها'
-
-        keyboard = InlineKeyboardMarkup()
-        buttons = [[(use_status , f'userin_pays_{str(kart_number)}') , (status , f'chstatus_shomarekart_{str(kart_number)}')],
-                   [('حذف شماره کارت' , f'rmkart_{str(kart_number)}')]]
-                     
-        for row in buttons:
-            button_list = []
-            for text , data in row:
-                button = InlineKeyboardButton(text=text , callback_data=data)
-                button_list.append(button)
-            keyboard.add(*button_list)
-
-        back_button = InlineKeyboardButton('✤ - بازگشت به منوی قبلی - ✤' , callback_data='back_from_manage_shomare_kart')
-        keyboard.add(back_button , row_width=1)
-        return keyboard
-    
-
-
-# ------------------------- JoinCH-Section ----------------------------------------------------------------------------------
-
-    @staticmethod 
-    def manage_joinch():
-        keyboard = InlineKeyboardMarkup()
-        botsettings_ = botsettings.objects.all()
-        status_txt = lambda botstatus : '❌غیر فعال' if botstatus == 0 else  '✅فعال'
-
-        for i in botsettings_:
-            buttons = [[(status_txt(i.forcechjoin), 'forcechjoin') , ('جوین اجباری' , 'forcechjoin')],
-                       [('مدیریت کردن چنل ها ' ,'manage_forcejoin')],]
-        
-        button_list = []
-        for row in buttons:
-            for text , data in row:
-                button = InlineKeyboardButton(text=text , callback_data= data)
-                button_list.append(button)
-        keyboard.add(*button_list , row_width=2)
-
-        back_button = InlineKeyboardButton('✤ - بازگشت به منوی قبلی - ✤' , callback_data='back_from_manage_force_ch')
-        keyboard.add(back_button , row_width=1)
-
-        return keyboard
-    
-
-
-
-
-
-    @staticmethod
-    def manage_channels():
-        keyboard = InlineKeyboardMarkup()
-        channels_ = channels.objects.all()
-        
-        raw_top_buttons = [[('مدیریت چنل' ,'mangene') , ('ایدی چنل' , 'ch_url') , ('نام چنل' , 'ch_name')]]
-
-        top_buttons =[]
-        for i in raw_top_buttons:
-            for text , data in i:
-                button = InlineKeyboardButton(text=text , callback_data=data )
-                top_buttons.append(button)
-        keyboard.add(*top_buttons , row_width=3)
-
-
-        row_button_channel = []
-        for i in channels_:
-            buttons = [('⚙️' , f'mfch_{str(i.id)}') , (i.channel_url or i.channel_id ,  f'mfch_{str(i.id)}') , (i.channel_name , f'mfch_{str(i.id)}')]
-            row_button_channel.append(buttons)
-
-        for row in row_button_channel:
-            button_channel = []
-            for text , data in row:
-                button = InlineKeyboardButton(text=text , callback_data=data)
-                button_channel.append(button)
-            keyboard.add(*button_channel , row_width=3)
-
-        add_ch = InlineKeyboardButton('اضافه کردن چنل جدید' , callback_data='add_new_force_channel')
-        back_button = InlineKeyboardButton('✤ - بازگشت به منوی قبلی - ✤' , callback_data='back_from_managing_force_ch')
-        keyboard.add(add_ch, back_button , row_width=1)
-        
-
-        return keyboard
-
-
-
-
-    @staticmethod 
-    def manage_ch(channel_id):
-        channel_ = channels.objects.get(id = int(channel_id))
-        status = 'فعال کردن' if channel_.ch_status == 0 else 'غیر فعال کردن'
-
-        keyboard = InlineKeyboardMarkup()
-        buttons = [[(status , f'status_chf_{str(channel_.id)}'), ('حذف کردن چنل' , f'rm_chf_{str(channel_.id)}')]]
-
-        for row in buttons:
-            button_list = []
-            for text , data in row:
-                button = InlineKeyboardButton(text=text , callback_data=data)
-                button_list.append(button)
-            keyboard.add(*button_list)
-
-        back_button = InlineKeyboardButton('✤ - بازگشت به منوی قبلی - ✤' , callback_data='back_from_manage_channel')
-        keyboard.add(back_button , row_width=1)
-        return keyboard
-    
 
 
 # ------------------------- Increase-Decrease-Section -----------------------------------------------------------------------

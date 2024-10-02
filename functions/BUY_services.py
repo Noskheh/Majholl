@@ -1,7 +1,7 @@
 from mainrobot.models import v2panel , products  , inovices ,users  , payments
 from telebot.types import InlineKeyboardButton , InlineKeyboardMarkup , InputMediaPhoto
 from tools import QRcode_maker , farsi_parser
-import decimal ,  re , panelsapi
+import decimal ,  re , panelsapi , datetime
 from functions import PANEL_managing
 from bottext import *
 
@@ -247,10 +247,13 @@ def tamdid_pay_with_wallet(call , bot , product_dict , panel_loaded):
                                     config_name = info['config_name'] ,paid_status = 1 , # 0 > unpaid , 1 > paid , 2 > waiting  , 3 > disagree 
                                     paid_mode= 'wlt', kind_pay='Tamdid' )
         
-        payments_ = payments.objects.create(user_id=user_ , amount=info['pro_cost'] , payment_status='accepted' , inovice_id=inovivces_)
+
+        payments_ = payments.objects.create(user_id=user_ , amount=info['pro_cost'] , payment_status='accepted' , inovice_id=inovivces_ )
         
         try :
-            send_request = panelsapi.marzban(info['panel_number']).put_user(info['config_name'] , info['product_id'])
+            note = f'renewed at {datetime.datetime.now().strftime("%H:%M:%S-%Y/%m/%d")} by {call.from_user.id}'
+       
+            send_request = panelsapi.marzban(info['panel_number']).put_user(info['config_name'] , info['product_id'] ,usernote = note)
             if send_request is False :
                 return 'requset_false'
             else :

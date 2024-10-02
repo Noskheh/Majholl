@@ -145,6 +145,41 @@ class subscriptions(models.Model):
         db_table = 'v2_subscriptions'
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+# -------------- > Bot-Settings < -------------- 
+
+class botsettings(models.Model):
+    #- 1
+    wallet_pay = models.SmallIntegerField(default=0 , null=False)
+    kartbkart_pay = models.SmallIntegerField(default= 0 , null=False)
+    moneyusrtousr = models.SmallIntegerField(default=0 , null=False)
+    forcechjoin = models.SmallIntegerField(default=0 , null=False)
+    #- 2
+    irnumber = models.SmallIntegerField(default=0 , null=False)
+    #- 3
+    newusers_notf = models.SmallIntegerField(default=0 , null=False)
+    walletcharge_notf = models.SmallIntegerField(default=0 , null=False)
+    moneyusrtousr_notf = models.SmallIntegerField(default=0 , null=False)
+    buyservice_notf = models.SmallIntegerField(default=0 , null=False)
+    tamdidservice_notf = models.SmallIntegerField(default=0 , null=False)
+
+    class Meta:
+        db_table = 'v2_botsettings'
+
+
+
 class shomarekart(models.Model):
     bank_name = models.CharField(max_length=56 , null=True , blank= True)
     ownername = models.CharField(max_length=124 , null= True , blank=True)
@@ -156,23 +191,16 @@ class shomarekart(models.Model):
 
 
 
-class botsettings(models.Model):
-    wallet_pay = models.SmallIntegerField(default=0 , null=False)
-    kartbkart_pay = models.SmallIntegerField(default= 0 , null=False)
-    forcechjoin = models.SmallIntegerField(default=0 , null=False)
-    moneyusrtousr = models.SmallIntegerField(default=0 , null=False)
-    irnumber = models.SmallIntegerField(default=0 ,null=False)
-    
-    class Meta:
-        db_table = 'v2_botsettings'
-
-
-
 
 class channels(models.Model):
+
+    ch_usage_choices = [('logc' , 'logs_channel') ,
+                        ('fjch' , 'force_join_channel')]
+    
     channel_name = models.CharField(max_length=56)
     channel_url = models.CharField(max_length=256 , blank=True , null=True)
     channel_id = models.BigIntegerField(blank=True , null=True)
     ch_status = models.SmallIntegerField(default=0 , null=False)
+    ch_usage = models.CharField(max_length=4 , choices=ch_usage_choices ,blank=True , null=True)
     class Meta:    
         db_table = 'v2_channels'
